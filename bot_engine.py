@@ -304,7 +304,7 @@ class FishingEngine:
                         self.tap_key(SCAN_A, 0.06)
                         time.sleep(0.08)
                         self.tap_key(SCAN_D, 0.06)
-                        time.sleep(0.08)
+                        time.sleep(0.09)
 
                 if not self.is_running:
                     break
