@@ -20,6 +20,7 @@ constexpr WORD SCAN_E = 0x12;
 
 struct GameWindowInfo {
     bool found = false;
+    HWND handle = nullptr;
     int x = 0;
     int y = 0;
     int w = 0;
@@ -36,6 +37,9 @@ public:
     bool is_running() const { return m_is_running.load(); }
     bool is_active() const { return m_is_active.load(); }
     void set_active(bool active) { m_is_active.store(active); }
+    bool game_found() const { return m_game_found.load(); }
+    unsigned long input_attempts() const { return m_input_attempts.load(); }
+    unsigned long input_successes() const { return m_input_successes.load(); }
 
     double scale_x = 0.32;
     double scale_y = 0.78;
@@ -45,9 +49,12 @@ public:
 private:
     std::atomic<bool> m_is_running{false};
     std::atomic<bool> m_is_active{false};
+    std::atomic<bool> m_game_found{false};
+    std::atomic<unsigned long> m_input_attempts{0};
+    std::atomic<unsigned long> m_input_successes{0};
     std::thread m_worker_thread;
 
-    void tap_key(WORD scancode, int duration_ms = 40) const;
+    void tap_key(WORD scancode, int duration_ms = 40);
     GameWindowInfo find_game_window() const;
     bool capture_window_rect(const GameWindowInfo& win, std::vector<std::uint8_t>& output, int& width, int& height) const;
     bool capture_game_window(const GameWindowInfo& win, std::vector<std::uint8_t>& output, int& width, int& height) const;

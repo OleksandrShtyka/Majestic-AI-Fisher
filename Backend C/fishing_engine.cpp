@@ -130,12 +130,12 @@ TensionDecision tension_is_full_and_jerking(const std::vector<std::uint8_t>& fra
     return TensionDecision::WaitingForJerk;
 }
 
-void send_scancode(WORD scancode, DWORD flags) {
+bool send_scancode(WORD scancode, DWORD flags) {
     INPUT input{};
     input.type = INPUT_KEYBOARD;
     input.ki.wScan = scancode;
     input.ki.dwFlags = flags;
-    SendInput(1, &input, sizeof(input));
+    return SendInput(1, &input, sizeof(input)) == 1;
 }
 
 }  // namespace
@@ -153,18 +153,21 @@ extern "C" int fishing_process_bgr(const std::uint8_t* data, int width, int heig
 
 extern "C" int fishing_tap_key(unsigned short scancode, int duration_ms) {
     if (duration_ms < 0 || duration_ms > 5000) return 0;
-    send_scancode(WORD(scancode), KEYEVENTF_SCANCODE);
+    const bool key_down = send_scancode(WORD(scancode), KEYEVENTF_SCANCODE);
     std::random_device device;
     std::mt19937 generator(device());
     std::uniform_int_distribution<int> delay(duration_ms, duration_ms + 20);
     std::this_thread::sleep_for(std::chrono::milliseconds(delay(generator)));
-    send_scancode(WORD(scancode), KEYEVENTF_SCANCODE | KEYEVENTF_KEYUP);
-    return 1;
+    const bool key_up = send_scancode(WORD(scancode), KEYEVENTF_SCANCODE | KEYEVENTF_KEYUP);
+    return key_down && key_up ? 1 : 0;
 }
 
 FishingEngine::FishingEngine() = default;
 FishingEngine::~FishingEngine() { stop(); }
-void FishingEngine::tap_key(WORD scancode, int duration_ms) const { fishing_tap_key(scancode, duration_ms); }
+void FishingEngine::tap_key(WORD scancode, int duration_ms) {
+    ++m_input_attempts;
+    if (fishing_tap_key(scancode, duration_ms)) ++m_input_successes;
+}
 
 GameWindowInfo FishingEngine::find_game_window() const {
     const char* titles[] = {"Grand Theft Auto V", "Majestic RP", "GTA5", "RAGE Multiplayer", "RAGEMP"};
@@ -189,7 +192,7 @@ GameWindowInfo FishingEngine::find_game_window() const {
     RECT rect{};
     if (!hwnd || !GetWindowRect(hwnd, &rect)) return {};
     const int width = rect.right - rect.left, height = rect.bottom - rect.top;
-    return width > 100 && height > 100 ? GameWindowInfo{true, rect.left, rect.top, width, height} : GameWindowInfo{};
+    return width > 100 && height > 100 ? GameWindowInfo{true, hwnd, rect.left, rect.top, width, height} : GameWindowInfo{};
 }
 
 bool FishingEngine::capture_window_rect(const GameWindowInfo& win, std::vector<std::uint8_t>& output, int& width, int& height) const {
@@ -235,10 +238,11 @@ bool FishingEngine::capture_game_window(const GameWindowInfo& win, std::vector<s
 
 void FishingEngine::start_thread() {
     if (m_is_running.exchange(true)) return;
-    m_is_active = false; m_worker_thread = std::thread(&FishingEngine::main_loop, this);
+    m_is_active = false; m_game_found = false; m_input_attempts = 0; m_input_successes = 0;
+    m_worker_thread = std::thread(&FishingEngine::main_loop, this);
 }
 void FishingEngine::stop() {
-    m_is_running = false; m_is_active = false;
+    m_is_running = false; m_is_active = false; m_game_found = false;
     if (m_worker_thread.joinable()) m_worker_thread.join();
 }
 
@@ -250,7 +254,14 @@ void FishingEngine::main_loop() {
         last_hotkey = hotkey;
         if (!m_is_active) { std::this_thread::sleep_for(std::chrono::milliseconds(50)); continue; }
         const auto window = find_game_window();
+        m_game_found = window.found;
         if (!window.found) { std::this_thread::sleep_for(std::chrono::seconds(1)); continue; }
+
+        // The Start button makes this application's window foreground. Keys
+        // would otherwise be sent back to the UI rather than the game.
+        ShowWindow(window.handle, SW_RESTORE);
+        SetForegroundWindow(window.handle);
+        std::this_thread::sleep_for(std::chrono::milliseconds(250));
 
         // Fixed fishing routine.  This intentionally does not depend on GDI
         // screen capture: the game sequence is controlled by its timings.
