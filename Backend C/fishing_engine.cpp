@@ -31,7 +31,7 @@ bool is_white(std::uint8_t b, std::uint8_t g, std::uint8_t r) {
 bool parse_bgr(const std::uint8_t* data, int width, int height, int stride, double& distance, bool& in_zone) {
     if (!data || width <= 0 || height <= 0 || stride < width * 3) return false;
     std::int64_t green_sum = 0, white_sum = 0;
-    int green_count = 0, white_count = 0, green_min = width, green_max = -1;
+    int green_count = 0, green_min = width, green_max = -1, green_min_y = height, green_max_y = -1;
     for (int y = 0; y < height; ++y) {
         const auto* row = data + std::ptrdiff_t(y) * stride;
         for (int x = 0; x < width; ++x) {
@@ -39,11 +39,23 @@ bool parse_bgr(const std::uint8_t* data, int width, int height, int stride, doub
             if (is_green(pixel[0], pixel[1], pixel[2])) {
                 green_sum += x; ++green_count;
                 green_min = std::min(green_min, x); green_max = std::max(green_max, x);
+                green_min_y = std::min(green_min_y, y); green_max_y = std::max(green_max_y, y);
             }
+        }
+    }
+    if (green_count <= 5) return false;
+    // Only accept the white marker in the same horizontal strip as the green
+    // casting zone. This avoids white text/cursors elsewhere in the HUD.
+    int white_count = 0;
+    const int marker_top = std::max(0, green_min_y - 18), marker_bottom = std::min(height, green_max_y + 19);
+    for (int y = marker_top; y < marker_bottom; ++y) {
+        const auto* row = data + std::ptrdiff_t(y) * stride;
+        for (int x = std::max(0, green_min - 25); x < std::min(width, green_max + 26); ++x) {
+            const auto* pixel = row + x * 3;
             if (is_white(pixel[0], pixel[1], pixel[2])) { white_sum += x; ++white_count; }
         }
     }
-    if (green_count <= 5 || white_count == 0) return false;
+    if (white_count == 0) return false;
     const double green_center = double(green_sum) / green_count;
     const double white_center = double(white_sum) / white_count;
     distance = (white_center - green_center) / width;
@@ -226,7 +238,14 @@ void FishingEngine::main_loop() {
         bool casted = false;
         while (m_is_running && m_is_active && std::chrono::steady_clock::now() - cast_start < std::chrono::seconds(12)) {
             std::vector<std::uint8_t> frame; int width = 0, height = 0;
-            if (capture_window_rect(window, frame, width, height)) {
+            // Prefer the user-configured capture zone. If it did not find the
+            // scale in three seconds (different HUD layout), fall back to a
+            // whole-window scan for automatic recovery.
+            const bool use_configured_zone = std::chrono::steady_clock::now() - cast_start < std::chrono::seconds(3);
+            const bool captured = use_configured_zone
+                ? capture_window_rect(window, frame, width, height)
+                : capture_game_window(window, frame, width, height);
+            if (captured) {
                 double distance = 0.0; bool in_green_zone = false;
                 const int stride = ((width * 3 + 3) / 4) * 4;
                 if (parse_bgr(frame.data(), width, height, stride, distance, in_green_zone) && in_green_zone) {
