@@ -252,51 +252,17 @@ void FishingEngine::main_loop() {
         const auto window = find_game_window();
         if (!window.found) { std::this_thread::sleep_for(std::chrono::seconds(1)); continue; }
 
-        // In Majestic the fishing interaction itself is started with E.  The
-        // casting bar only appears after this key, so it must be sent before
-        // waiting for the green launch zone / pressing Space.
+        // Fixed fishing routine.  This intentionally does not depend on GDI
+        // screen capture: the game sequence is controlled by its timings.
         tap_key(SCAN_E, 50);
-        std::this_thread::sleep_for(std::chrono::milliseconds(450));
+        std::this_thread::sleep_for(std::chrono::seconds(1));
         if (!m_is_running || !m_is_active) continue;
+        tap_key(SCAN_E, 50);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        if (!m_is_running || !m_is_active) continue;
+        tap_key(SCAN_SPACE, 50);
 
-        // Phase 1: cast only when the white marker reaches the green launch
-        // zone on the long horizontal casting bar.
-        const auto cast_start = std::chrono::steady_clock::now();
-        bool casted = false;
-        while (m_is_running && m_is_active && std::chrono::steady_clock::now() - cast_start < std::chrono::seconds(12)) {
-            std::vector<std::uint8_t> frame; int width = 0, height = 0;
-            // Prefer the user-configured capture zone. If it does not find
-            // the scale quickly, scan the whole window before using fallback.
-            const auto cast_elapsed = std::chrono::steady_clock::now() - cast_start;
-            const bool use_configured_zone = cast_elapsed < std::chrono::milliseconds(1200);
-            const bool captured = use_configured_zone
-                ? capture_window_rect(window, frame, width, height)
-                : capture_game_window(window, frame, width, height);
-            if (captured) {
-                double distance = 0.0; bool in_green_zone = false;
-                const int stride = ((width * 3 + 3) / 4) * 4;
-                if (parse_bgr(frame.data(), width, height, stride, distance, in_green_zone) && in_green_zone) {
-                    // The launch bar is confirmed with Space when its white
-                    // marker reaches the green segment.
-                    tap_key(SCAN_SPACE, 50);
-                    casted = true;
-                    break;
-                }
-            }
-            // Some game modes hide the launch scale from GDI capture. Do not
-            // leave the bot idle forever: start the cast after a short wait.
-            if (cast_elapsed >= std::chrono::milliseconds(1800)) {
-                tap_key(SCAN_SPACE, 50);
-                casted = true;
-                break;
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(5));
-        }
-        if (!casted) continue;
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(1500));
-        // Phase 2: fixed hook timing requested by the user. Screen capture
-        // is deliberately not used here: hook after 43.8 seconds from cast.
+        // Hook after 43.8 seconds from the cast.
         constexpr auto hook_delay = std::chrono::milliseconds(43800);
         const auto hook_at = std::chrono::steady_clock::now() + hook_delay;
         while (m_is_running && m_is_active && std::chrono::steady_clock::now() < hook_at) {
@@ -304,8 +270,7 @@ void FishingEngine::main_loop() {
         }
         const bool hooked = m_is_running && m_is_active;
         if (hooked) tap_key(SCAN_SPACE, 40);
-        const auto reel_start = std::chrono::steady_clock::now();
-        while (hooked && m_is_running && m_is_active && std::chrono::steady_clock::now() - reel_start < std::chrono::seconds(6)) {
+        for (int cycle = 0; hooked && m_is_running && m_is_active && cycle < 20; ++cycle) {
             tap_key(SCAN_A, 60); std::this_thread::sleep_for(std::chrono::milliseconds(80));
             tap_key(SCAN_D, 60); std::this_thread::sleep_for(std::chrono::milliseconds(80));
         }
