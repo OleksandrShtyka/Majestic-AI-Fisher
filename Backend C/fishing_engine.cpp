@@ -137,8 +137,8 @@ TensionDecision tension_is_full_and_jerking(const std::vector<std::uint8_t>& fra
     // Majestic's tension widget is in the lower-right HUD. Restricting the
     // scan to this normalized rectangle prevents chat and notification reds
     // elsewhere on screen from being mistaken for a bite.
-    const int left = int(width * 0.68), right = int(width * 0.82);
-    const int top = int(height * 0.84), bottom = int(height * 0.98);
+    const int left = int(width * 0.70), right = int(width * 0.79);
+    const int top = int(height * 0.87), bottom = int(height * 0.95);
     // The bar is long and horizontal: idle is dark/white; a bite is red.
     for (int y = top; y < bottom; y += 2) {
         const auto* row = frame.data() + std::ptrdiff_t(y) * stride;
@@ -163,7 +163,9 @@ TensionDecision tension_is_full_and_jerking(const std::vector<std::uint8_t>& fra
             }
         }
     }
-    const int minimum_red_width = std::max(26, int(width * 0.03));
+    // The red bite line occupies nearly the full width of the widget in the
+    // supplied screenshots; reject small red glyphs and notifications.
+    const int minimum_red_width = std::max(60, int(width * 0.055));
     constexpr int kMinimumWhiteWidth = 18;
     // The inactive bar can be nearly black, with only a tiny moving white
     // marker. Treat the absence of a long red segment as the armed state.
@@ -181,14 +183,10 @@ TensionDecision tension_is_full_and_jerking(const std::vector<std::uint8_t>& fra
         return TensionDecision::WaitingForJerk;
     }
     if (red_bar.width >= minimum_red_width) {
-        // Require two scans so a one-frame red rendering artifact does not
-        // trigger a hook. The intended event is white -> red at the same
-        // screen position, not merely any red notification elsewhere in HUD.
-        const bool same_indicator = state.white_seen && (state.anchor_width == 0 ||
-            (std::abs(red_bar.x - state.anchor_x) <= std::max(35, state.anchor_width / 2) &&
-             std::abs(red_bar.y - state.anchor_y) <= 28));
-        if (same_indicator) ++state.red_frames;
-        else state.red_frames = 0;
+        // Both the white and red sliders move inside the widget. Its fixed
+        // HUD rectangle is the anchor, not a previous slider X position.
+        // Require two captures to filter a one-frame rendering artifact.
+        ++state.red_frames;
         return state.white_seen && state.red_frames >= 2 ? TensionDecision::Confirmed : TensionDecision::WaitingForJerk;
     }
     return TensionDecision::WaitingForJerk;
@@ -421,19 +419,11 @@ void FishingEngine::main_loop() {
         // The bite interval is random. Watch the tension widget instead of
         // using a fixed timer, and only hook after a stable red transition.
         constexpr auto hook_timeout = std::chrono::seconds(120);
-        // Let the post-cast interface settle before inspecting it. Without
-        // this grace period, a fading cast animation can be read as tension.
-        constexpr auto minimum_bite_wait = std::chrono::seconds(4);
         TensionState tension{};
         m_phase = FishingPhase::WaitingHook;
-        const auto watch_from = std::chrono::steady_clock::now() + minimum_bite_wait;
         const auto deadline = std::chrono::steady_clock::now() + hook_timeout;
         bool hooked = false;
         while (m_is_running && m_is_active && std::chrono::steady_clock::now() < deadline) {
-            if (std::chrono::steady_clock::now() < watch_from) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(25));
-                continue;
-            }
             std::vector<std::uint8_t> frame;
             int width = 0, height = 0;
             if (capture_game_window(window, frame, width, height)) {
