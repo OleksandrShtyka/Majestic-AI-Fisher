@@ -82,13 +82,17 @@ enum class TensionDecision { NotVisible, WaitingForJerk, Confirmed };
 TensionDecision tension_is_full_and_jerking(const std::vector<std::uint8_t>& frame, int width, int height, int stride, TensionState& state) {
     if (frame.empty() || width < 50 || height < 50) return TensionDecision::NotVisible;
     struct Bar { int x = 0; int y = 0; int width = 0; } red_bar, white_bar;
-    // The indicator is a long horizontal line: white when idle and red at a
-    // bite. Ignore short text strokes and other HUD elements.
-    for (int y = 0; y < height; y += 2) {
+    // Majestic's tension widget is in the lower-right HUD. Restricting the
+    // scan to this normalized rectangle prevents chat and notification reds
+    // elsewhere on screen from being mistaken for a bite.
+    const int left = int(width * 0.68), right = int(width * 0.82);
+    const int top = int(height * 0.84), bottom = int(height * 0.98);
+    // The bar is long and horizontal: idle is dark/white; a bite is red.
+    for (int y = top; y < bottom; y += 2) {
         const auto* row = frame.data() + std::ptrdiff_t(y) * stride;
         int red_start = -1, white_start = -1;
-        for (int x = 0; x <= width; ++x) {
-            const auto* pixel = x < width ? row + x * 3 : nullptr;
+        for (int x = left; x <= right; ++x) {
+            const auto* pixel = x < right ? row + x * 3 : nullptr;
             const bool red = pixel && is_tension_red(pixel);
             const int high = pixel ? std::max({int(pixel[0]), int(pixel[1]), int(pixel[2])}) : 0;
             const int low = pixel ? std::min({int(pixel[0]), int(pixel[1]), int(pixel[2])}) : 0;
@@ -107,9 +111,16 @@ TensionDecision tension_is_full_and_jerking(const std::vector<std::uint8_t>& fra
             }
         }
     }
-    constexpr int kMinimumBarWidth = 42;
-    if (red_bar.width < kMinimumBarWidth && white_bar.width < kMinimumBarWidth) return TensionDecision::NotVisible;
-    if (white_bar.width >= kMinimumBarWidth) {
+    const int minimum_red_width = std::max(26, int(width * 0.03));
+    constexpr int kMinimumWhiteWidth = 18;
+    // The inactive bar can be nearly black, with only a tiny moving white
+    // marker. Treat the absence of a long red segment as the armed state.
+    if (red_bar.width < minimum_red_width) {
+        state.white_seen = true;
+        state.red_frames = 0;
+        return white_bar.width >= kMinimumWhiteWidth ? TensionDecision::WaitingForJerk : TensionDecision::NotVisible;
+    }
+    if (white_bar.width >= kMinimumWhiteWidth) {
         state.white_seen = true;
         state.red_frames = 0;
         state.anchor_x = white_bar.x;
@@ -117,13 +128,13 @@ TensionDecision tension_is_full_and_jerking(const std::vector<std::uint8_t>& fra
         state.anchor_width = white_bar.width;
         return TensionDecision::WaitingForJerk;
     }
-    if (red_bar.width >= kMinimumBarWidth) {
+    if (red_bar.width >= minimum_red_width) {
         // Require two scans so a one-frame red rendering artifact does not
         // trigger a hook. The intended event is white -> red at the same
         // screen position, not merely any red notification elsewhere in HUD.
-        const bool same_indicator = state.white_seen &&
-            std::abs(red_bar.x - state.anchor_x) <= std::max(35, state.anchor_width / 2) &&
-            std::abs(red_bar.y - state.anchor_y) <= 28;
+        const bool same_indicator = state.white_seen && (state.anchor_width == 0 ||
+            (std::abs(red_bar.x - state.anchor_x) <= std::max(35, state.anchor_width / 2) &&
+             std::abs(red_bar.y - state.anchor_y) <= 28));
         if (same_indicator) ++state.red_frames;
         else state.red_frames = 0;
         return state.white_seen && state.red_frames >= 2 ? TensionDecision::Confirmed : TensionDecision::WaitingForJerk;
@@ -207,7 +218,7 @@ const char* FishingEngine::phase_name() const {
     case FishingPhase::WaitingSecondE: return "waiting 3.5 seconds";
     case FishingPhase::SecondE: return "sending second E";
     case FishingPhase::Casting: return "waiting 2 seconds before cast";
-    case FishingPhase::WaitingHook: return "waiting 43.8 seconds";
+    case FishingPhase::WaitingHook: return "watching tension indicator";
     case FishingPhase::Hooking: return "sending Space (hook)";
     case FishingPhase::Reeling: return "reeling A/D";
     default: return "stopped";
@@ -355,14 +366,25 @@ void FishingEngine::main_loop() {
         if (!m_is_running || !m_is_active) continue;
         tap_key(SCAN_SPACE, 50);
 
-        // Hook exactly 45 seconds after the cast confirmation.
-        constexpr auto hook_delay = std::chrono::seconds(45);
+        // The bite interval is random. Watch the tension widget instead of
+        // using a fixed timer, and only hook after a stable red transition.
+        constexpr auto hook_timeout = std::chrono::seconds(120);
+        TensionState tension{};
         m_phase = FishingPhase::WaitingHook;
-        const auto hook_at = std::chrono::steady_clock::now() + hook_delay;
-        while (m_is_running && m_is_active && std::chrono::steady_clock::now() < hook_at) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(25));
+        const auto deadline = std::chrono::steady_clock::now() + hook_timeout;
+        bool hooked = false;
+        while (m_is_running && m_is_active && std::chrono::steady_clock::now() < deadline) {
+            std::vector<std::uint8_t> frame;
+            int width = 0, height = 0;
+            if (capture_game_window(window, frame, width, height)) {
+                const int stride = ((width * 3 + 3) / 4) * 4;
+                if (tension_is_full_and_jerking(frame, width, height, stride, tension) == TensionDecision::Confirmed) {
+                    hooked = true;
+                    break;
+                }
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(30));
         }
-        const bool hooked = m_is_running && m_is_active;
         if (hooked) { m_phase = FishingPhase::Hooking; tap_key(SCAN_SPACE, 40); }
         m_phase = FishingPhase::Reeling;
         for (int cycle = 0; hooked && m_is_running && m_is_active && cycle < 20; ++cycle) {
