@@ -249,7 +249,9 @@ void FishingEngine::main_loop() {
                 double distance = 0.0; bool in_green_zone = false;
                 const int stride = ((width * 3 + 3) / 4) * 4;
                 if (parse_bgr(frame.data(), width, height, stride, distance, in_green_zone) && in_green_zone) {
-                    tap_key(SCAN_E, 50);
+                    // The launch bar is confirmed with Space when its white
+                    // marker reaches the green segment.
+                    tap_key(SCAN_SPACE, 50);
                     casted = true;
                     break;
                 }
