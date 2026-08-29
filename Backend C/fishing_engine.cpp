@@ -204,7 +204,7 @@ const char* FishingEngine::phase_name() const {
     case FishingPhase::SearchingGame: return "searching for game";
     case FishingPhase::FocusingGame: return "focusing game";
     case FishingPhase::FirstE: return "sending first E";
-    case FishingPhase::WaitingSecondE: return "waiting 1 second";
+    case FishingPhase::WaitingSecondE: return "waiting 3.5 seconds";
     case FishingPhase::SecondE: return "sending second E";
     case FishingPhase::Casting: return "sending Space (cast)";
     case FishingPhase::WaitingHook: return "waiting 43.8 seconds";
@@ -342,15 +342,14 @@ void FishingEngine::main_loop() {
         // screen capture: the game sequence is controlled by its timings.
         m_phase = FishingPhase::FirstE;
         tap_key(SCAN_E, 110);
-        m_phase = FishingPhase::WaitingSecondE;
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        if (!m_is_running || !m_is_active) continue;
         // The first interaction can move focus to a game child window. Bring
-        // the game back to foreground before the second E as well.
+        // the game back to foreground, then keep the full 3.5-second delay.
         m_phase = FishingPhase::FocusingGame;
         m_game_focused = focus_game_window(window.handle);
         if (!m_game_focused) continue;
-        std::this_thread::sleep_for(std::chrono::milliseconds(80));
+        m_phase = FishingPhase::WaitingSecondE;
+        std::this_thread::sleep_for(std::chrono::milliseconds(3500));
+        if (!m_is_running || !m_is_active) continue;
         m_phase = FishingPhase::SecondE;
         tap_key(SCAN_E, 110);
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
