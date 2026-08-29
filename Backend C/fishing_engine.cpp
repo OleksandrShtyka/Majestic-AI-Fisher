@@ -277,7 +277,7 @@ void FishingEngine::main_loop() {
             }
             // Some game modes hide the launch scale from GDI capture. Do not
             // leave the bot idle forever: start the cast after a short wait.
-            if (cast_elapsed >= std::chrono::milliseconds(3200)) {
+            if (cast_elapsed >= std::chrono::milliseconds(1800)) {
                 tap_key(SCAN_SPACE, 50);
                 casted = true;
                 break;
@@ -287,26 +287,15 @@ void FishingEngine::main_loop() {
         if (!casted) continue;
 
         std::this_thread::sleep_for(std::chrono::milliseconds(1500));
-        // Phase 2: wait for the separate tension indicator to change from
-        // white (idle) to red (bite), then hook with Space.
-        const auto wait_start = std::chrono::steady_clock::now(); bool hooked = false;
-        TensionState tension_state;
-        auto last_tension_scan = wait_start;
-        while (m_is_running && m_is_active && std::chrono::steady_clock::now() - wait_start < std::chrono::seconds(12)) {
-            const auto now = std::chrono::steady_clock::now();
-            if (now - last_tension_scan >= std::chrono::milliseconds(45)) {
-                std::vector<std::uint8_t> hud; int hud_width = 0, hud_height = 0;
-                last_tension_scan = now;
-                const int hud_stride = ((window.w * 3 + 3) / 4) * 4;
-                if (capture_game_window(window, hud, hud_width, hud_height)) {
-                    const auto tension = tension_is_full_and_jerking(hud, hud_width, hud_height, hud_stride, tension_state);
-                    if (tension == TensionDecision::Confirmed) {
-                        tap_key(SCAN_SPACE, 40); hooked = true; break;
-                    }
-                }
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        // Phase 2: fixed hook timing requested by the user. Screen capture
+        // is deliberately not used here: hook after 43.8 seconds from cast.
+        constexpr auto hook_delay = std::chrono::milliseconds(43800);
+        const auto hook_at = std::chrono::steady_clock::now() + hook_delay;
+        while (m_is_running && m_is_active && std::chrono::steady_clock::now() < hook_at) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(25));
         }
+        const bool hooked = m_is_running && m_is_active;
+        if (hooked) tap_key(SCAN_SPACE, 40);
         const auto reel_start = std::chrono::steady_clock::now();
         while (hooked && m_is_running && m_is_active && std::chrono::steady_clock::now() - reel_start < std::chrono::seconds(6)) {
             tap_key(SCAN_A, 60); std::this_thread::sleep_for(std::chrono::milliseconds(80));
