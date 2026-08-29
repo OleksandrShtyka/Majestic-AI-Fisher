@@ -52,66 +52,51 @@ bool parse_bgr(const std::uint8_t* data, int width, int height, int stride, doub
 }
 
 bool is_tension_red(const std::uint8_t* pixel) {
-    // The tension bar is a saturated red horizontal indicator.
-    return pixel[2] >= 145 && pixel[2] >= pixel[1] * 2 && pixel[2] >= pixel[0] * 2;
+    // Saturated red state of the horizontal "Tension" bar.
+    return pixel[2] >= 135 && pixel[2] >= pixel[1] * 2 && pixel[2] >= pixel[0] * 2;
 }
 
 struct TensionState {
-    std::vector<std::uint8_t> previous;
-    int previous_x = 0, previous_y = 0, previous_width = 0;
-    int confirmation_frames = 0;
+    bool white_seen = false;
+    int red_frames = 0;
 };
 
 enum class TensionDecision { NotVisible, WaitingForJerk, Confirmed };
 
 TensionDecision tension_is_full_and_jerking(const std::vector<std::uint8_t>& frame, int width, int height, int stride, TensionState& state) {
     if (frame.empty() || width < 50 || height < 50) return TensionDecision::NotVisible;
-    int best_x = 0, best_y = 0, best_width = 0;
-    // The bar is horizontal. Search red runs, ignoring tiny red HUD elements.
+    int best_red_width = 0, best_white_width = 0;
+    // The indicator is a long horizontal line: white when idle and red at a
+    // bite. Ignore short text strokes and other HUD elements.
     for (int y = 0; y < height; y += 2) {
         const auto* row = frame.data() + std::ptrdiff_t(y) * stride;
-        int run_start = -1;
+        int red_start = -1, white_start = -1;
         for (int x = 0; x <= width; ++x) {
-            const bool red = x < width && is_tension_red(row + x * 3);
-            if (red && run_start < 0) run_start = x;
-            if ((!red || x == width) && run_start >= 0) {
-                const int run_width = x - run_start;
-                if (run_width >= 45 && run_width <= width / 3 && run_width > best_width) {
-                    best_x = run_start; best_y = y; best_width = run_width;
-                }
-                run_start = -1;
-            }
+            const auto* pixel = x < width ? row + x * 3 : nullptr;
+            const bool red = pixel && is_tension_red(pixel);
+            const int high = pixel ? std::max({int(pixel[0]), int(pixel[1]), int(pixel[2])}) : 0;
+            const int low = pixel ? std::min({int(pixel[0]), int(pixel[1]), int(pixel[2])}) : 0;
+            const bool white = pixel && high >= 185 && high - low <= 45;
+            if (red && red_start < 0) red_start = x;
+            if (white && white_start < 0) white_start = x;
+            if ((!red || x == width) && red_start >= 0) { best_red_width = std::max(best_red_width, x - red_start); red_start = -1; }
+            if ((!white || x == width) && white_start >= 0) { best_white_width = std::max(best_white_width, x - white_start); white_start = -1; }
         }
     }
-    if (best_width == 0) { state.confirmation_frames = 0; return TensionDecision::NotVisible; }
-
-    // A full bar in the supplied reference fills almost the entire 100px track.
-    // At normal resolutions its visible red run is at least 65 pixels.
-    const bool full = best_width >= 65;
-    const int left = std::max(0, best_x - 20), right = std::min(width, best_x + best_width + 20);
-    const int top = std::max(0, best_y - 85), bottom = std::min(height, best_y + 16);
-    std::vector<std::uint8_t> sample;
-    sample.reserve(((right - left) / 3 + 1) * ((bottom - top) / 3 + 1));
-    for (int y = top; y < bottom; y += 3) {
-        const auto* row = frame.data() + std::ptrdiff_t(y) * stride;
-        for (int x = left; x < right; x += 3) {
-            const auto* pixel = row + x * 3;
-            // Compare the whole widget (icon + label + line), rather than
-            // only its red line: the line stays filled while the icon jerks.
-            sample.push_back(static_cast<std::uint8_t>((int(pixel[0]) + int(pixel[1]) + int(pixel[2])) / 3));
-        }
+    constexpr int kMinimumBarWidth = 42;
+    if (best_red_width < kMinimumBarWidth && best_white_width < kMinimumBarWidth) return TensionDecision::NotVisible;
+    if (best_white_width >= kMinimumBarWidth) {
+        state.white_seen = true;
+        state.red_frames = 0;
+        return TensionDecision::WaitingForJerk;
     }
-    float movement = 0.0f;
-    if (state.previous.size() == sample.size() && std::abs(state.previous_x - best_x) < 20 && std::abs(state.previous_y - best_y) < 20) {
-        int changed = 0;
-        for (std::size_t i = 0; i < sample.size(); ++i) changed += std::abs(int(sample[i]) - int(state.previous[i])) >= 22;
-        movement = sample.empty() ? 0.0f : float(changed) / sample.size();
+    if (best_red_width >= kMinimumBarWidth) {
+        // Require two scans so a one-frame red rendering artifact does not
+        // trigger a hook. The intended event is white -> red.
+        if (state.white_seen) ++state.red_frames;
+        return state.white_seen && state.red_frames >= 2 ? TensionDecision::Confirmed : TensionDecision::WaitingForJerk;
     }
-    state.previous = std::move(sample); state.previous_x = best_x; state.previous_y = best_y; state.previous_width = best_width;
-    // Require repeated confirmation: protects against red notifications or one-frame effects.
-    if (full && movement >= 0.025f) ++state.confirmation_frames;
-    else state.confirmation_frames = 0;
-    return state.confirmation_frames >= 2 ? TensionDecision::Confirmed : TensionDecision::WaitingForJerk;
+    return TensionDecision::WaitingForJerk;
 }
 
 void send_scancode(WORD scancode, DWORD flags) {

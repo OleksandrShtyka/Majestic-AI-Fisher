@@ -43,3 +43,7 @@
 4793	6489	8097187695451209	MajesticAIFisher.exe	e39ad7fd40cab4f8
 26	8587	8097190779977836	CMakeFiles/MajesticAIFisher.dir/src/native_app.cpp.obj	6ad79f79eda95c5d
 8589	10410	8097190865601574	MajesticAIFisher.exe	e39ad7fd40cab4f8
+57	4306	8097191789593937	Backend C/CMakeFiles/fishing_native.dir/fishing_engine.cpp.obj	7c5111cec7445940
+4307	5013	8097191837092398	fishing_native.dll	b7298060ba25986d
+4307	5013	8097191837092398	Backend C/libfishing_native.dll.a	b7298060ba25986d
+5014	6682	8097191839156426	MajesticAIFisher.exe	e39ad7fd40cab4f8
