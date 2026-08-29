@@ -350,13 +350,12 @@ void FishingEngine::main_loop() {
         if (!m_is_running || !m_is_active) continue;
         m_phase = FishingPhase::SecondE;
         tap_key(SCAN_E, 110);
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
         if (!m_is_running || !m_is_active) continue;
         m_phase = FishingPhase::Casting;
         tap_key(SCAN_SPACE, 50);
 
-        // Hook after 43.8 seconds from the cast.
-        constexpr auto hook_delay = std::chrono::milliseconds(43800);
+        // Hook exactly 45 seconds after the cast confirmation.
+        constexpr auto hook_delay = std::chrono::seconds(45);
         m_phase = FishingPhase::WaitingHook;
         const auto hook_at = std::chrono::steady_clock::now() + hook_delay;
         while (m_is_running && m_is_active && std::chrono::steady_clock::now() < hook_at) {
