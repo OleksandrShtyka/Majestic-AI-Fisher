@@ -342,11 +342,9 @@ void FishingEngine::main_loop() {
         // screen capture: the game sequence is controlled by its timings.
         m_phase = FishingPhase::FirstE;
         tap_key(SCAN_E, 110);
-        // The first interaction can move focus to a game child window. Bring
-        // the game back to foreground, then keep the full 3.5-second delay.
-        m_phase = FishingPhase::FocusingGame;
-        m_game_focused = focus_game_window(window.handle);
-        if (!m_game_focused) continue;
+        // Do not cancel the sequence when Windows refuses a redundant focus
+        // change after the first interaction: that was preventing the second
+        // E from ever being sent in alt:V.
         m_phase = FishingPhase::WaitingSecondE;
         std::this_thread::sleep_for(std::chrono::milliseconds(3500));
         if (!m_is_running || !m_is_active) continue;
