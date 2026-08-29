@@ -99,3 +99,7 @@
 51	905	8097308199420865	fishing_native.dll	b7298060ba25986d
 51	905	8097308199420865	Backend C/libfishing_native.dll.a	b7298060ba25986d
 907	2525	8097308201837865	MajesticAIFisher.exe	e39ad7fd40cab4f8
+42	4422	8097310808624784	Backend C/CMakeFiles/fishing_native.dir/fishing_engine.cpp.obj	7c5111cec7445940
+4424	5134	8097310857255352	fishing_native.dll	b7298060ba25986d
+4424	5134	8097310857255352	Backend C/libfishing_native.dll.a	b7298060ba25986d
+5134	6897	8097310859549071	MajesticAIFisher.exe	e39ad7fd40cab4f8

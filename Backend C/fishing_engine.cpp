@@ -6,6 +6,7 @@
 #include <cmath>
 #include <random>
 #include <string>
+#include <tlhelp32.h>
 
 namespace {
 
@@ -138,6 +139,40 @@ bool send_scancode(WORD scancode, DWORD flags) {
     return SendInput(1, &input, sizeof(input)) == 1;
 }
 
+DWORD find_gta_process_id() {
+    const HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (snapshot == INVALID_HANDLE_VALUE) return 0;
+    PROCESSENTRY32W entry{};
+    entry.dwSize = sizeof(entry);
+    DWORD result = 0;
+    if (Process32FirstW(snapshot, &entry)) {
+        do {
+            if (_wcsicmp(entry.szExeFile, L"GTA5.exe") == 0) {
+                result = entry.th32ProcessID;
+                break;
+            }
+        } while (Process32NextW(snapshot, &entry));
+    }
+    CloseHandle(snapshot);
+    return result;
+}
+
+HWND find_largest_window_for_process(DWORD process_id) {
+    struct Search { DWORD process_id; HWND result = nullptr; long long area = 0; } search{process_id};
+    EnumWindows([](HWND candidate, LPARAM param) -> BOOL {
+        auto* search = reinterpret_cast<Search*>(param);
+        DWORD process_id = 0;
+        GetWindowThreadProcessId(candidate, &process_id);
+        if (process_id != search->process_id || !IsWindowVisible(candidate)) return TRUE;
+        RECT rect{};
+        if (!GetWindowRect(candidate, &rect)) return TRUE;
+        const long long area = static_cast<long long>(rect.right - rect.left) * (rect.bottom - rect.top);
+        if (area > search->area) { search->area = area; search->result = candidate; }
+        return TRUE;
+    }, reinterpret_cast<LPARAM>(&search));
+    return search.result;
+}
+
 }  // namespace
 
 extern "C" int fishing_process_bgr(const std::uint8_t* data, int width, int height, int stride,
@@ -206,8 +241,12 @@ GameWindowInfo FishingEngine::find_game_window() const {
     // alt:V normally owns the visible GTA window on Majestic, so do not
     // limit discovery to the old RageMP/GTA titles.
     const char* titles[] = {"Grand Theft Auto V", "Grand Theft Auto V Enhanced", "Majestic RP", "GTA5", "alt:V", "altv", "RAGE Multiplayer", "RAGEMP"};
-    HWND hwnd = nullptr;
-    for (const char* title : titles) { if ((hwnd = FindWindowA(nullptr, title))) break; }
+    // The visible window title changes between alt:V states, while GTA5.exe
+    // remains stable. Prefer its largest visible top-level window.
+    HWND hwnd = find_largest_window_for_process(find_gta_process_id());
+    if (!hwnd) {
+        for (const char* title : titles) { if ((hwnd = FindWindowA(nullptr, title))) break; }
+    }
     if (!hwnd) {
         struct Search { HWND result = nullptr; } search;
         EnumWindows([](HWND candidate, LPARAM param) -> BOOL {
