@@ -81,9 +81,11 @@ enum class TensionDecision { NotVisible, WaitingForJerk, Confirmed };
 
 struct ReelState {
     bool has_previous = false;
+    bool indicator_seen = false;
     double previous_x = 0.0;
     int direction = 0;
     int stable_frames = 0;
+    int missing_frames = 0;
 };
 
 // Returns -1 when the fish is moving left, +1 when it is moving right, and
@@ -92,24 +94,29 @@ int fish_motion_direction(const std::vector<std::uint8_t>& frame, int width, int
     if (frame.empty() || width < 300 || height < 200) return 0;
     const int left = int(width * 0.30), right = int(width * 0.70);
     const int top = int(height * 0.80), bottom = int(height * 0.86);
-    std::int64_t x_sum = 0;
-    int count = 0;
+    int right_edge = -1;
+    int progress_pixels = 0;
     for (int y = top; y < bottom; ++y) {
         const auto* row = frame.data() + std::ptrdiff_t(y) * stride;
         for (int x = left; x < right; ++x) {
             const auto* p = row + x * 3;
             const int b = p[0], g = p[1], r = p[2];
-            // The fish icon is a small warm brown/orange sprite. This range
-            // excludes the yellow static scale marker and gray tick marks.
-            if (r >= 110 && r <= 230 && g >= 60 && g <= 155 && b >= 35 && b <= 140 &&
-                r >= g + 35 && g >= b + 10) {
-                x_sum += x;
-                ++count;
+            // In the recording the fish icon sits at the right edge of the
+            // yellow/green progress line. Tracking that colored edge is more
+            // reliable than trying to recognize the tiny white fish sprite.
+            if (r >= 140 && g >= 110 && b <= 120 && r + g >= 300) {
+                right_edge = std::max(right_edge, x);
+                ++progress_pixels;
             }
         }
     }
-    if (count < 5) return 0;
-    const double x = double(x_sum) / count;
+    if (progress_pixels < 12 || right_edge < 0) {
+        if (state.indicator_seen) ++state.missing_frames;
+        return 0;
+    }
+    state.indicator_seen = true;
+    state.missing_frames = 0;
+    const double x = right_edge;
     if (!state.has_previous) {
         state.has_previous = true;
         state.previous_x = x;
@@ -434,8 +441,11 @@ void FishingEngine::main_loop() {
         m_phase = FishingPhase::Reeling;
         ReelState reel{};
         int corrections = 0;
-        const auto reel_deadline = std::chrono::steady_clock::now() + std::chrono::seconds(12);
-        while (hooked && m_is_running && m_is_active && corrections < 20 &&
+        // The supplied recording shows this phase lasting about 49 seconds.
+        // Keep following it until the progress widget disappears or 65 seconds
+        // pass, rather than ending after a fixed handful of key taps.
+        const auto reel_deadline = std::chrono::steady_clock::now() + std::chrono::seconds(65);
+        while (hooked && m_is_running && m_is_active && corrections < 600 && reel.missing_frames < 20 &&
                std::chrono::steady_clock::now() < reel_deadline) {
             std::vector<std::uint8_t> frame;
             int width = 0, height = 0;
@@ -446,8 +456,8 @@ void FishingEngine::main_loop() {
             }
             // A moves the line left and D moves it right, therefore pull in
             // the direction opposite to the fish's observed movement.
-            if (movement > 0) { tap_key(SCAN_A, 80); ++corrections; }
-            else if (movement < 0) { tap_key(SCAN_D, 80); ++corrections; }
+            if (movement > 0) { tap_key(SCAN_A, 100); ++corrections; }
+            else if (movement < 0) { tap_key(SCAN_D, 100); ++corrections; }
             else std::this_thread::sleep_for(std::chrono::milliseconds(35));
         }
     }
