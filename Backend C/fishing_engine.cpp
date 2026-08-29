@@ -404,7 +404,9 @@ void FishingEngine::main_loop() {
         // Fixed fishing routine.  This intentionally does not depend on GDI
         // screen capture: the game sequence is controlled by its timings.
         m_phase = FishingPhase::FirstE;
-        tap_key(SCAN_E, 110);
+        // alt:V can ignore a very short injected E press; keep it down long
+        // enough for the interaction handler to observe it.
+        tap_key(SCAN_E, 280);
         // Do not cancel the sequence when Windows refuses a redundant focus
         // change after the first interaction: that was preventing the second
         // E from ever being sent in alt:V.
@@ -412,7 +414,7 @@ void FishingEngine::main_loop() {
         std::this_thread::sleep_for(std::chrono::seconds(2));
         if (!m_is_running || !m_is_active) continue;
         m_phase = FishingPhase::SecondE;
-        tap_key(SCAN_E, 110);
+        tap_key(SCAN_E, 280);
         m_phase = FishingPhase::Casting;
         std::this_thread::sleep_for(std::chrono::seconds(2));
         if (!m_is_running || !m_is_active) continue;
