@@ -164,9 +164,42 @@ extern "C" int fishing_tap_key(unsigned short scancode, int duration_ms) {
 
 FishingEngine::FishingEngine() = default;
 FishingEngine::~FishingEngine() { stop(); }
+const char* FishingEngine::phase_name() const {
+    switch (m_phase.load()) {
+    case FishingPhase::SearchingGame: return "searching for game";
+    case FishingPhase::FocusingGame: return "focusing game";
+    case FishingPhase::FirstE: return "sending first E";
+    case FishingPhase::WaitingSecondE: return "waiting 1 second";
+    case FishingPhase::SecondE: return "sending second E";
+    case FishingPhase::Casting: return "sending Space (cast)";
+    case FishingPhase::WaitingHook: return "waiting 43.8 seconds";
+    case FishingPhase::Hooking: return "sending Space (hook)";
+    case FishingPhase::Reeling: return "reeling A/D";
+    default: return "stopped";
+    }
+}
 void FishingEngine::tap_key(WORD scancode, int duration_ms) {
     ++m_input_attempts;
     if (fishing_tap_key(scancode, duration_ms)) ++m_input_successes;
+}
+
+bool FishingEngine::focus_game_window(HWND hwnd) const {
+    if (!hwnd || !IsWindow(hwnd)) return false;
+    const DWORD current_thread = GetCurrentThreadId();
+    const DWORD game_thread = GetWindowThreadProcessId(hwnd, nullptr);
+    const HWND foreground = GetForegroundWindow();
+    const DWORD foreground_thread = foreground ? GetWindowThreadProcessId(foreground, nullptr) : 0;
+    const bool attached_foreground = foreground_thread && foreground_thread != current_thread &&
+        AttachThreadInput(current_thread, foreground_thread, TRUE) != FALSE;
+    const bool attached_game = game_thread && game_thread != current_thread && game_thread != foreground_thread &&
+        AttachThreadInput(current_thread, game_thread, TRUE) != FALSE;
+    ShowWindow(hwnd, SW_RESTORE);
+    BringWindowToTop(hwnd);
+    SetForegroundWindow(hwnd);
+    SetFocus(hwnd);
+    if (attached_game) AttachThreadInput(current_thread, game_thread, FALSE);
+    if (attached_foreground) AttachThreadInput(current_thread, foreground_thread, FALSE);
+    return GetForegroundWindow() == hwnd;
 }
 
 GameWindowInfo FishingEngine::find_game_window() const {
@@ -238,53 +271,60 @@ bool FishingEngine::capture_game_window(const GameWindowInfo& win, std::vector<s
 
 void FishingEngine::start_thread() {
     if (m_is_running.exchange(true)) return;
-    m_is_active = false; m_game_found = false; m_input_attempts = 0; m_input_successes = 0;
+    m_is_active = false; m_game_found = false; m_game_focused = false; m_phase = FishingPhase::Stopped;
+    m_input_attempts = 0; m_input_successes = 0;
     m_worker_thread = std::thread(&FishingEngine::main_loop, this);
 }
 void FishingEngine::stop() {
-    m_is_running = false; m_is_active = false; m_game_found = false;
+    m_is_running = false; m_is_active = false; m_game_found = false; m_game_focused = false; m_phase = FishingPhase::Stopped;
     if (m_worker_thread.joinable()) m_worker_thread.join();
 }
 
 void FishingEngine::main_loop() {
-    bool last_hotkey = false;
     while (m_is_running) {
-        const bool hotkey = (GetAsyncKeyState(VK_F5) & 0x8000) != 0;
-        if (hotkey && !last_hotkey) m_is_active = !m_is_active.load();
-        last_hotkey = hotkey;
-        if (!m_is_active) { std::this_thread::sleep_for(std::chrono::milliseconds(50)); continue; }
+        if (!m_is_active) { m_phase = FishingPhase::Stopped; std::this_thread::sleep_for(std::chrono::milliseconds(50)); continue; }
+        m_phase = FishingPhase::SearchingGame;
         const auto window = find_game_window();
         m_game_found = window.found;
-        if (!window.found) { std::this_thread::sleep_for(std::chrono::seconds(1)); continue; }
+        if (!window.found) { m_game_focused = false; std::this_thread::sleep_for(std::chrono::seconds(1)); continue; }
 
-        // The Start button makes this application's window foreground. Keys
-        // would otherwise be sent back to the UI rather than the game.
-        ShowWindow(window.handle, SW_RESTORE);
-        SetForegroundWindow(window.handle);
+        // The Start button makes this application's window foreground. Move
+        // focus to the actual game window before sending any input.
+        m_phase = FishingPhase::FocusingGame;
+        m_game_focused = focus_game_window(window.handle);
+        if (!m_game_focused) { std::this_thread::sleep_for(std::chrono::milliseconds(500)); continue; }
         std::this_thread::sleep_for(std::chrono::milliseconds(250));
 
         // Fixed fishing routine.  This intentionally does not depend on GDI
         // screen capture: the game sequence is controlled by its timings.
+        m_phase = FishingPhase::FirstE;
         tap_key(SCAN_E, 110);
+        m_phase = FishingPhase::WaitingSecondE;
         std::this_thread::sleep_for(std::chrono::seconds(1));
         if (!m_is_running || !m_is_active) continue;
         // The first interaction can move focus to a game child window. Bring
         // the game back to foreground before the second E as well.
-        SetForegroundWindow(window.handle);
+        m_phase = FishingPhase::FocusingGame;
+        m_game_focused = focus_game_window(window.handle);
+        if (!m_game_focused) continue;
         std::this_thread::sleep_for(std::chrono::milliseconds(80));
+        m_phase = FishingPhase::SecondE;
         tap_key(SCAN_E, 110);
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         if (!m_is_running || !m_is_active) continue;
+        m_phase = FishingPhase::Casting;
         tap_key(SCAN_SPACE, 50);
 
         // Hook after 43.8 seconds from the cast.
         constexpr auto hook_delay = std::chrono::milliseconds(43800);
+        m_phase = FishingPhase::WaitingHook;
         const auto hook_at = std::chrono::steady_clock::now() + hook_delay;
         while (m_is_running && m_is_active && std::chrono::steady_clock::now() < hook_at) {
             std::this_thread::sleep_for(std::chrono::milliseconds(25));
         }
         const bool hooked = m_is_running && m_is_active;
-        if (hooked) tap_key(SCAN_SPACE, 40);
+        if (hooked) { m_phase = FishingPhase::Hooking; tap_key(SCAN_SPACE, 40); }
+        m_phase = FishingPhase::Reeling;
         for (int cycle = 0; hooked && m_is_running && m_is_active && cycle < 20; ++cycle) {
             tap_key(SCAN_A, 60); std::this_thread::sleep_for(std::chrono::milliseconds(80));
             tap_key(SCAN_D, 60); std::this_thread::sleep_for(std::chrono::milliseconds(80));
