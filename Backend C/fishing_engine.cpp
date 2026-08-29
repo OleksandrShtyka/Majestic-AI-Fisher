@@ -385,7 +385,11 @@ void FishingEngine::stop() {
 }
 
 void FishingEngine::main_loop() {
+    bool last_hotkey = false;
     while (m_is_running) {
+        const bool hotkey = (GetAsyncKeyState(VK_F5) & 0x8000) != 0;
+        if (hotkey && !last_hotkey) m_is_active = !m_is_active.load();
+        last_hotkey = hotkey;
         if (!m_is_active) { m_phase = FishingPhase::Stopped; std::this_thread::sleep_for(std::chrono::milliseconds(50)); continue; }
         m_phase = FishingPhase::SearchingGame;
         const auto window = find_game_window();
