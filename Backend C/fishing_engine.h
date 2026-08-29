@@ -7,6 +7,12 @@
 #include <thread>
 #include <vector>
 
+#ifdef FISHING_NATIVE_EXPORTS
+#define FISHING_API __declspec(dllexport)
+#else
+#define FISHING_API __declspec(dllimport)
+#endif
+
 constexpr WORD SCAN_A = 0x1E;
 constexpr WORD SCAN_D = 0x20;
 constexpr WORD SCAN_SPACE = 0x39;
@@ -20,7 +26,7 @@ struct GameWindowInfo {
     int h = 0;
 };
 
-class FishingEngine {
+class FISHING_API FishingEngine {
 public:
     FishingEngine();
     ~FishingEngine();

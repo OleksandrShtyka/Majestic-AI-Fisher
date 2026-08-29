@@ -1,7 +1,7 @@
 add_library(fishing_native SHARED fishing_engine.cpp)
 
 target_compile_features(fishing_native PRIVATE cxx_std_17)
-target_compile_definitions(fishing_native PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+target_compile_definitions(fishing_native PRIVATE FISHING_NATIVE_EXPORTS WIN32_LEAN_AND_MEAN NOMINMAX)
 target_link_libraries(fishing_native PRIVATE user32 gdi32)
 if(MINGW)
     target_link_options(fishing_native PRIVATE -static-libgcc -static-libstdc++)
