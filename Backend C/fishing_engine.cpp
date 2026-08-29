@@ -92,17 +92,22 @@ bool tension_is_full_and_jerking(const std::vector<std::uint8_t>& frame, int wid
     sample.reserve(((right - left) / 3 + 1) * ((bottom - top) / 3 + 1));
     for (int y = top; y < bottom; y += 3) {
         const auto* row = frame.data() + std::ptrdiff_t(y) * stride;
-        for (int x = left; x < right; x += 3) sample.push_back(is_tension_red(row + x * 3) ? 255 : 0);
+        for (int x = left; x < right; x += 3) {
+            const auto* pixel = row + x * 3;
+            // Compare the whole widget (icon + label + line), rather than
+            // only its red line: the line stays filled while the icon jerks.
+            sample.push_back(static_cast<std::uint8_t>((int(pixel[0]) + int(pixel[1]) + int(pixel[2])) / 3));
+        }
     }
     float movement = 0.0f;
     if (state.previous.size() == sample.size() && std::abs(state.previous_x - best_x) < 20 && std::abs(state.previous_y - best_y) < 20) {
         int changed = 0;
-        for (std::size_t i = 0; i < sample.size(); ++i) changed += sample[i] != state.previous[i];
+        for (std::size_t i = 0; i < sample.size(); ++i) changed += std::abs(int(sample[i]) - int(state.previous[i])) >= 22;
         movement = sample.empty() ? 0.0f : float(changed) / sample.size();
     }
     state.previous = std::move(sample); state.previous_x = best_x; state.previous_y = best_y; state.previous_width = best_width;
     // Require repeated confirmation: protects against red notifications or one-frame effects.
-    if (full && movement >= 0.06f) ++state.confirmation_frames;
+    if (full && movement >= 0.025f) ++state.confirmation_frames;
     else state.confirmation_frames = 0;
     return state.confirmation_frames >= 2;
 }
