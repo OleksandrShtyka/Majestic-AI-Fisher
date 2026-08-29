@@ -79,6 +79,51 @@ struct TensionState {
 
 enum class TensionDecision { NotVisible, WaitingForJerk, Confirmed };
 
+struct ReelState {
+    bool has_previous = false;
+    double previous_x = 0.0;
+    int direction = 0;
+    int stable_frames = 0;
+};
+
+// Returns -1 when the fish is moving left, +1 when it is moving right, and
+// 0 when the fish marker cannot yet be tracked reliably.
+int fish_motion_direction(const std::vector<std::uint8_t>& frame, int width, int height, int stride, ReelState& state) {
+    if (frame.empty() || width < 300 || height < 200) return 0;
+    const int left = int(width * 0.30), right = int(width * 0.70);
+    const int top = int(height * 0.80), bottom = int(height * 0.86);
+    std::int64_t x_sum = 0;
+    int count = 0;
+    for (int y = top; y < bottom; ++y) {
+        const auto* row = frame.data() + std::ptrdiff_t(y) * stride;
+        for (int x = left; x < right; ++x) {
+            const auto* p = row + x * 3;
+            const int b = p[0], g = p[1], r = p[2];
+            // The fish icon is a small warm brown/orange sprite. This range
+            // excludes the yellow static scale marker and gray tick marks.
+            if (r >= 110 && r <= 230 && g >= 60 && g <= 155 && b >= 35 && b <= 140 &&
+                r >= g + 35 && g >= b + 10) {
+                x_sum += x;
+                ++count;
+            }
+        }
+    }
+    if (count < 5) return 0;
+    const double x = double(x_sum) / count;
+    if (!state.has_previous) {
+        state.has_previous = true;
+        state.previous_x = x;
+        return 0;
+    }
+    const double delta = x - state.previous_x;
+    state.previous_x = x;
+    if (std::abs(delta) < 1.2) return 0;
+    const int direction = delta > 0.0 ? 1 : -1;
+    if (direction == state.direction) ++state.stable_frames;
+    else { state.direction = direction; state.stable_frames = 1; }
+    return state.stable_frames >= 2 ? direction : 0;
+}
+
 TensionDecision tension_is_full_and_jerking(const std::vector<std::uint8_t>& frame, int width, int height, int stride, TensionState& state) {
     if (frame.empty() || width < 50 || height < 50) return TensionDecision::NotVisible;
     struct Bar { int x = 0; int y = 0; int width = 0; } red_bar, white_bar;
@@ -215,7 +260,7 @@ const char* FishingEngine::phase_name() const {
     case FishingPhase::SearchingGame: return "searching for game";
     case FishingPhase::FocusingGame: return "focusing game";
     case FishingPhase::FirstE: return "sending first E";
-    case FishingPhase::WaitingSecondE: return "waiting 3.5 seconds";
+    case FishingPhase::WaitingSecondE: return "waiting 2 seconds";
     case FishingPhase::SecondE: return "sending second E";
     case FishingPhase::Casting: return "waiting 2 seconds before cast";
     case FishingPhase::WaitingHook: return "watching tension indicator";
@@ -357,7 +402,7 @@ void FishingEngine::main_loop() {
         // change after the first interaction: that was preventing the second
         // E from ever being sent in alt:V.
         m_phase = FishingPhase::WaitingSecondE;
-        std::this_thread::sleep_for(std::chrono::milliseconds(3500));
+        std::this_thread::sleep_for(std::chrono::seconds(2));
         if (!m_is_running || !m_is_active) continue;
         m_phase = FishingPhase::SecondE;
         tap_key(SCAN_E, 110);
@@ -387,9 +432,23 @@ void FishingEngine::main_loop() {
         }
         if (hooked) { m_phase = FishingPhase::Hooking; tap_key(SCAN_SPACE, 40); }
         m_phase = FishingPhase::Reeling;
-        for (int cycle = 0; hooked && m_is_running && m_is_active && cycle < 20; ++cycle) {
-            tap_key(SCAN_A, 60); std::this_thread::sleep_for(std::chrono::milliseconds(80));
-            tap_key(SCAN_D, 60); std::this_thread::sleep_for(std::chrono::milliseconds(80));
+        ReelState reel{};
+        int corrections = 0;
+        const auto reel_deadline = std::chrono::steady_clock::now() + std::chrono::seconds(12);
+        while (hooked && m_is_running && m_is_active && corrections < 20 &&
+               std::chrono::steady_clock::now() < reel_deadline) {
+            std::vector<std::uint8_t> frame;
+            int width = 0, height = 0;
+            int movement = 0;
+            if (capture_game_window(window, frame, width, height)) {
+                const int stride = ((width * 3 + 3) / 4) * 4;
+                movement = fish_motion_direction(frame, width, height, stride, reel);
+            }
+            // A moves the line left and D moves it right, therefore pull in
+            // the direction opposite to the fish's observed movement.
+            if (movement > 0) { tap_key(SCAN_A, 80); ++corrections; }
+            else if (movement < 0) { tap_key(SCAN_D, 80); ++corrections; }
+            else std::this_thread::sleep_for(std::chrono::milliseconds(35));
         }
     }
 }
