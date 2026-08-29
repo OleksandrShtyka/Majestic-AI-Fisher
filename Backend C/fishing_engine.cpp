@@ -71,13 +71,16 @@ bool is_tension_red(const std::uint8_t* pixel) {
 struct TensionState {
     bool white_seen = false;
     int red_frames = 0;
+    int anchor_x = 0;
+    int anchor_y = 0;
+    int anchor_width = 0;
 };
 
 enum class TensionDecision { NotVisible, WaitingForJerk, Confirmed };
 
 TensionDecision tension_is_full_and_jerking(const std::vector<std::uint8_t>& frame, int width, int height, int stride, TensionState& state) {
     if (frame.empty() || width < 50 || height < 50) return TensionDecision::NotVisible;
-    int best_red_width = 0, best_white_width = 0;
+    struct Bar { int x = 0; int y = 0; int width = 0; } red_bar, white_bar;
     // The indicator is a long horizontal line: white when idle and red at a
     // bite. Ignore short text strokes and other HUD elements.
     for (int y = 0; y < height; y += 2) {
@@ -91,21 +94,37 @@ TensionDecision tension_is_full_and_jerking(const std::vector<std::uint8_t>& fra
             const bool white = pixel && high >= 185 && high - low <= 45;
             if (red && red_start < 0) red_start = x;
             if (white && white_start < 0) white_start = x;
-            if ((!red || x == width) && red_start >= 0) { best_red_width = std::max(best_red_width, x - red_start); red_start = -1; }
-            if ((!white || x == width) && white_start >= 0) { best_white_width = std::max(best_white_width, x - white_start); white_start = -1; }
+            if ((!red || x == width) && red_start >= 0) {
+                const int run = x - red_start;
+                if (run > red_bar.width) red_bar = {red_start, y, run};
+                red_start = -1;
+            }
+            if ((!white || x == width) && white_start >= 0) {
+                const int run = x - white_start;
+                if (run > white_bar.width) white_bar = {white_start, y, run};
+                white_start = -1;
+            }
         }
     }
     constexpr int kMinimumBarWidth = 42;
-    if (best_red_width < kMinimumBarWidth && best_white_width < kMinimumBarWidth) return TensionDecision::NotVisible;
-    if (best_white_width >= kMinimumBarWidth) {
+    if (red_bar.width < kMinimumBarWidth && white_bar.width < kMinimumBarWidth) return TensionDecision::NotVisible;
+    if (white_bar.width >= kMinimumBarWidth) {
         state.white_seen = true;
         state.red_frames = 0;
+        state.anchor_x = white_bar.x;
+        state.anchor_y = white_bar.y;
+        state.anchor_width = white_bar.width;
         return TensionDecision::WaitingForJerk;
     }
-    if (best_red_width >= kMinimumBarWidth) {
+    if (red_bar.width >= kMinimumBarWidth) {
         // Require two scans so a one-frame red rendering artifact does not
-        // trigger a hook. The intended event is white -> red.
-        if (state.white_seen) ++state.red_frames;
+        // trigger a hook. The intended event is white -> red at the same
+        // screen position, not merely any red notification elsewhere in HUD.
+        const bool same_indicator = state.white_seen &&
+            std::abs(red_bar.x - state.anchor_x) <= std::max(35, state.anchor_width / 2) &&
+            std::abs(red_bar.y - state.anchor_y) <= 28;
+        if (same_indicator) ++state.red_frames;
+        else state.red_frames = 0;
         return state.white_seen && state.red_frames >= 2 ? TensionDecision::Confirmed : TensionDecision::WaitingForJerk;
     }
     return TensionDecision::WaitingForJerk;
@@ -238,10 +257,10 @@ void FishingEngine::main_loop() {
         bool casted = false;
         while (m_is_running && m_is_active && std::chrono::steady_clock::now() - cast_start < std::chrono::seconds(12)) {
             std::vector<std::uint8_t> frame; int width = 0, height = 0;
-            // Prefer the user-configured capture zone. If it did not find the
-            // scale in three seconds (different HUD layout), fall back to a
-            // whole-window scan for automatic recovery.
-            const bool use_configured_zone = std::chrono::steady_clock::now() - cast_start < std::chrono::seconds(3);
+            // Prefer the user-configured capture zone. If it does not find
+            // the scale quickly, scan the whole window before using fallback.
+            const auto cast_elapsed = std::chrono::steady_clock::now() - cast_start;
+            const bool use_configured_zone = cast_elapsed < std::chrono::milliseconds(1200);
             const bool captured = use_configured_zone
                 ? capture_window_rect(window, frame, width, height)
                 : capture_game_window(window, frame, width, height);
@@ -255,6 +274,13 @@ void FishingEngine::main_loop() {
                     casted = true;
                     break;
                 }
+            }
+            // Some game modes hide the launch scale from GDI capture. Do not
+            // leave the bot idle forever: start the cast after a short wait.
+            if (cast_elapsed >= std::chrono::milliseconds(3200)) {
+                tap_key(SCAN_SPACE, 50);
+                casted = true;
+                break;
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
