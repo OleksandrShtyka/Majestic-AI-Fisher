@@ -203,7 +203,9 @@ bool FishingEngine::focus_game_window(HWND hwnd) const {
 }
 
 GameWindowInfo FishingEngine::find_game_window() const {
-    const char* titles[] = {"Grand Theft Auto V", "Majestic RP", "GTA5", "RAGE Multiplayer", "RAGEMP"};
+    // alt:V normally owns the visible GTA window on Majestic, so do not
+    // limit discovery to the old RageMP/GTA titles.
+    const char* titles[] = {"Grand Theft Auto V", "Grand Theft Auto V Enhanced", "Majestic RP", "GTA5", "alt:V", "altv", "RAGE Multiplayer", "RAGEMP"};
     HWND hwnd = nullptr;
     for (const char* title : titles) { if ((hwnd = FindWindowA(nullptr, title))) break; }
     if (!hwnd) {
@@ -215,7 +217,9 @@ GameWindowInfo FishingEngine::find_game_window() const {
             GetWindowTextA(candidate, title, int(sizeof(title)));
             std::string text(title);
             std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) { return char(std::tolower(c)); });
-            if (text.find("gta") != std::string::npos || text.find("majestic") != std::string::npos || text.find("rage") != std::string::npos) {
+            if (text.find("gta") != std::string::npos || text.find("majestic") != std::string::npos ||
+                text.find("alt:v") != std::string::npos || text.find("altv") != std::string::npos ||
+                text.find("rage") != std::string::npos) {
                 search->result = candidate; return FALSE;
             }
             return TRUE;
