@@ -265,10 +265,14 @@ void FishingEngine::main_loop() {
 
         // Fixed fishing routine.  This intentionally does not depend on GDI
         // screen capture: the game sequence is controlled by its timings.
-        tap_key(SCAN_E, 50);
+        tap_key(SCAN_E, 110);
         std::this_thread::sleep_for(std::chrono::seconds(1));
         if (!m_is_running || !m_is_active) continue;
-        tap_key(SCAN_E, 50);
+        // The first interaction can move focus to a game child window. Bring
+        // the game back to foreground before the second E as well.
+        SetForegroundWindow(window.handle);
+        std::this_thread::sleep_for(std::chrono::milliseconds(80));
+        tap_key(SCAN_E, 110);
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         if (!m_is_running || !m_is_active) continue;
         tap_key(SCAN_SPACE, 50);
