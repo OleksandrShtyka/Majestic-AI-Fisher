@@ -404,9 +404,7 @@ void FishingEngine::main_loop() {
         // Fixed fishing routine.  This intentionally does not depend on GDI
         // screen capture: the game sequence is controlled by its timings.
         m_phase = FishingPhase::FirstE;
-        // alt:V can ignore a very short injected E press; keep it down long
-        // enough for the interaction handler to observe it.
-        tap_key(SCAN_E, 280);
+        tap_key(SCAN_E, 45);
         // Do not cancel the sequence when Windows refuses a redundant focus
         // change after the first interaction: that was preventing the second
         // E from ever being sent in alt:V.
@@ -414,7 +412,7 @@ void FishingEngine::main_loop() {
         std::this_thread::sleep_for(std::chrono::seconds(2));
         if (!m_is_running || !m_is_active) continue;
         m_phase = FishingPhase::SecondE;
-        tap_key(SCAN_E, 280);
+        tap_key(SCAN_E, 45);
         m_phase = FishingPhase::Casting;
         std::this_thread::sleep_for(std::chrono::seconds(2));
         if (!m_is_running || !m_is_active) continue;
@@ -423,11 +421,19 @@ void FishingEngine::main_loop() {
         // The bite interval is random. Watch the tension widget instead of
         // using a fixed timer, and only hook after a stable red transition.
         constexpr auto hook_timeout = std::chrono::seconds(120);
+        // Let the post-cast interface settle before inspecting it. Without
+        // this grace period, a fading cast animation can be read as tension.
+        constexpr auto minimum_bite_wait = std::chrono::seconds(4);
         TensionState tension{};
         m_phase = FishingPhase::WaitingHook;
+        const auto watch_from = std::chrono::steady_clock::now() + minimum_bite_wait;
         const auto deadline = std::chrono::steady_clock::now() + hook_timeout;
         bool hooked = false;
         while (m_is_running && m_is_active && std::chrono::steady_clock::now() < deadline) {
+            if (std::chrono::steady_clock::now() < watch_from) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(25));
+                continue;
+            }
             std::vector<std::uint8_t> frame;
             int width = 0, height = 0;
             if (capture_game_window(window, frame, width, height)) {
