@@ -11,6 +11,7 @@ import ctypes
 from config import DEFAULT_SCALE_X, DEFAULT_SCALE_Y, DEFAULT_SCALE_W, DEFAULT_SCALE_H, LOWER_GREEN, UPPER_GREEN, \
     LOWER_WHITE, UPPER_WHITE
 from ai_model import DQNAgent
+from native_fishing import native_fishing
 
 # --- Полезный функционал из GitHub кода: Прямой ввод SendInput для обхода хуков игры ---
 SendInput = ctypes.windll.user32.SendInput
@@ -116,6 +117,8 @@ class FishingEngine:
         self.scale_h = DEFAULT_SCALE_H
 
     def tap_key(self, scancode, duration=0.04):
+        if native_fishing.tap_key(scancode, max(0, round(duration * 1000))):
+            return
         press_direct_key(scancode)
         time.sleep(random.uniform(duration, duration + 0.02))
         release_direct_key(scancode)
@@ -125,6 +128,8 @@ class FishingEngine:
             return 0.0, False, False
 
         bgr = cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR) if frame.shape[2] == 4 else frame
+        if native_fishing.available:
+            return native_fishing.process_bgr(bgr)
         hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
 
         mask_g = cv2.inRange(hsv, np.array(LOWER_GREEN), np.array(UPPER_GREEN))

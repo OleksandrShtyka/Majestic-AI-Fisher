@@ -3,8 +3,17 @@ __pycache__/
 *.py[codz]
 *$py.class
 
-# C extensions
+# Native extensions and C/C++ build outputs
 *.so
+*.pyd
+*.dll
+*.exe
+*.pdb
+*.ilk
+*.lib
+*.a
+/Backend C/build/
+/cmake-build-*/
 
 # Distribution / packaging
 .Python
@@ -28,14 +37,14 @@ MANIFEST
 
 # PyInstaller
 *.manifest
-*.spec
+# Keep the PyInstaller build recipe in the repository.
+!main.spec
 
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
 
-# EditorConfig file
-.editorconfig
+# EditorConfig is repository configuration and must be versioned.
 
 # Unit test / coverage reports
 htmlcov/
@@ -161,6 +170,10 @@ tempCodeRunnerFile.py
 
 # Ruff stuff:
 .ruff_cache/
+
+# Locally generated capture diagnostics
+/debug_game_window.png
+/debug_cropped_zone.png
 
 # PyPI configuration file
 .pypirc
