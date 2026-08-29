@@ -241,25 +241,28 @@ void FishingEngine::main_loop() {
         auto last_tension_scan = wait_start;
         while (m_is_running && m_is_active && std::chrono::steady_clock::now() - wait_start < std::chrono::seconds(12)) {
             std::vector<std::uint8_t> frame; int width = 0, height = 0;
+            bool marker_in_green_zone = false;
             if (capture_window_rect(window, frame, width, height)) {
                 double distance = 0; bool inside = false; const int stride = ((width * 3 + 3) / 4) * 4;
-                if (parse_bgr(frame.data(), width, height, stride, distance, inside) && inside) {
-                    const auto now = std::chrono::steady_clock::now();
-                    if (now - last_tension_scan >= std::chrono::milliseconds(45)) {
-                        std::vector<std::uint8_t> hud; int hud_width = 0, hud_height = 0;
-                        last_tension_scan = now;
-                        const int hud_stride = ((window.w * 3 + 3) / 4) * 4;
-                        if (capture_game_window(window, hud, hud_width, hud_height)) {
-                            const auto tension = tension_is_full_and_jerking(hud, hud_width, hud_height, hud_stride, tension_state);
-                            // Do not disable legacy fishing when the optional
-                            // tension widget is not rendered in this UI layout.
-                            if (tension == TensionDecision::Confirmed || tension == TensionDecision::NotVisible) {
-                                tap_key(SCAN_SPACE, 40); hooked = true; break;
-                            }
-                        } else {
-                            tap_key(SCAN_SPACE, 40); hooked = true; break;
-                        }
+                marker_in_green_zone = parse_bgr(frame.data(), width, height, stride, distance, inside) && inside;
+            }
+
+            const auto now = std::chrono::steady_clock::now();
+            if (now - last_tension_scan >= std::chrono::milliseconds(45)) {
+                std::vector<std::uint8_t> hud; int hud_width = 0, hud_height = 0;
+                last_tension_scan = now;
+                const int hud_stride = ((window.w * 3 + 3) / 4) * 4;
+                if (capture_game_window(window, hud, hud_width, hud_height)) {
+                    const auto tension = tension_is_full_and_jerking(hud, hud_width, hud_height, hud_stride, tension_state);
+                    // The tension widget is the primary bite signal. Its
+                    // confirmation triggers even when the green marker has
+                    // not yet been detected in a cropped frame.
+                    if (tension == TensionDecision::Confirmed ||
+                        (tension == TensionDecision::NotVisible && marker_in_green_zone)) {
+                        tap_key(SCAN_SPACE, 40); hooked = true; break;
                     }
+                } else if (marker_in_green_zone) {
+                    tap_key(SCAN_SPACE, 40); hooked = true; break;
                 }
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
