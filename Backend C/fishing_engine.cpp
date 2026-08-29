@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cctype>
+#include <cmath>
 #include <random>
 #include <string>
 
@@ -48,6 +49,62 @@ bool parse_bgr(const std::uint8_t* data, int width, int height, int stride, doub
     distance = (white_center - green_center) / width;
     in_zone = green_min - 5 <= white_center && white_center <= green_max + 5;
     return true;
+}
+
+bool is_tension_red(const std::uint8_t* pixel) {
+    // The tension bar is a saturated red horizontal indicator.
+    return pixel[2] >= 145 && pixel[2] >= pixel[1] * 2 && pixel[2] >= pixel[0] * 2;
+}
+
+struct TensionState {
+    std::vector<std::uint8_t> previous;
+    int previous_x = 0, previous_y = 0, previous_width = 0;
+    int confirmation_frames = 0;
+};
+
+bool tension_is_full_and_jerking(const std::vector<std::uint8_t>& frame, int width, int height, int stride, TensionState& state) {
+    if (frame.empty() || width < 50 || height < 50) return false;
+    int best_x = 0, best_y = 0, best_width = 0;
+    // The bar is horizontal. Search red runs, ignoring tiny red HUD elements.
+    for (int y = 0; y < height; y += 2) {
+        const auto* row = frame.data() + std::ptrdiff_t(y) * stride;
+        int run_start = -1;
+        for (int x = 0; x <= width; ++x) {
+            const bool red = x < width && is_tension_red(row + x * 3);
+            if (red && run_start < 0) run_start = x;
+            if ((!red || x == width) && run_start >= 0) {
+                const int run_width = x - run_start;
+                if (run_width >= 45 && run_width <= width / 3 && run_width > best_width) {
+                    best_x = run_start; best_y = y; best_width = run_width;
+                }
+                run_start = -1;
+            }
+        }
+    }
+    if (best_width == 0) { state.confirmation_frames = 0; return false; }
+
+    // A full bar in the supplied reference fills almost the entire 100px track.
+    // At normal resolutions its visible red run is at least 65 pixels.
+    const bool full = best_width >= 65;
+    const int left = std::max(0, best_x - 20), right = std::min(width, best_x + best_width + 20);
+    const int top = std::max(0, best_y - 85), bottom = std::min(height, best_y + 16);
+    std::vector<std::uint8_t> sample;
+    sample.reserve(((right - left) / 3 + 1) * ((bottom - top) / 3 + 1));
+    for (int y = top; y < bottom; y += 3) {
+        const auto* row = frame.data() + std::ptrdiff_t(y) * stride;
+        for (int x = left; x < right; x += 3) sample.push_back(is_tension_red(row + x * 3) ? 255 : 0);
+    }
+    float movement = 0.0f;
+    if (state.previous.size() == sample.size() && std::abs(state.previous_x - best_x) < 20 && std::abs(state.previous_y - best_y) < 20) {
+        int changed = 0;
+        for (std::size_t i = 0; i < sample.size(); ++i) changed += sample[i] != state.previous[i];
+        movement = sample.empty() ? 0.0f : float(changed) / sample.size();
+    }
+    state.previous = std::move(sample); state.previous_x = best_x; state.previous_y = best_y; state.previous_width = best_width;
+    // Require repeated confirmation: protects against red notifications or one-frame effects.
+    if (full && movement >= 0.06f) ++state.confirmation_frames;
+    else state.confirmation_frames = 0;
+    return state.confirmation_frames >= 2;
 }
 
 void send_scancode(WORD scancode, DWORD flags) {
@@ -134,6 +191,25 @@ bool FishingEngine::capture_window_rect(const GameWindowInfo& win, std::vector<s
     return copied && read;
 }
 
+bool FishingEngine::capture_game_window(const GameWindowInfo& win, std::vector<std::uint8_t>& output, int& width, int& height) const {
+    width = win.w; height = win.h;
+    HWND desktop = GetDesktopWindow(); HDC screen = GetDC(desktop);
+    HDC memory = screen ? CreateCompatibleDC(screen) : nullptr;
+    HBITMAP bitmap = memory ? CreateCompatibleBitmap(screen, width, height) : nullptr;
+    if (!screen || !memory || !bitmap) {
+        if (bitmap) DeleteObject(bitmap); if (memory) DeleteDC(memory); if (screen) ReleaseDC(desktop, screen);
+        return false;
+    }
+    HGDIOBJ previous = SelectObject(memory, bitmap);
+    const bool copied = BitBlt(memory, 0, 0, width, height, screen, win.x, win.y, SRCCOPY | CAPTUREBLT) != 0;
+    BITMAPINFO info{}; info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER); info.bmiHeader.biWidth = width; info.bmiHeader.biHeight = -height;
+    info.bmiHeader.biPlanes = 1; info.bmiHeader.biBitCount = 24; info.bmiHeader.biCompression = BI_RGB;
+    const int stride = ((width * 3 + 3) / 4) * 4; output.resize(size_t(stride) * height);
+    const bool read = GetDIBits(memory, bitmap, 0, height, output.data(), &info, DIB_RGB_COLORS) != 0;
+    SelectObject(memory, previous); DeleteObject(bitmap); DeleteDC(memory); ReleaseDC(desktop, screen);
+    return copied && read;
+}
+
 void FishingEngine::start_thread() {
     if (m_is_running.exchange(true)) return;
     m_is_active = false; m_worker_thread = std::thread(&FishingEngine::main_loop, this);
@@ -154,11 +230,24 @@ void FishingEngine::main_loop() {
         if (!window.found) { std::this_thread::sleep_for(std::chrono::seconds(1)); continue; }
         tap_key(SCAN_E, 50); std::this_thread::sleep_for(std::chrono::milliseconds(1500));
         const auto wait_start = std::chrono::steady_clock::now(); bool hooked = false;
+        TensionState tension_state;
+        auto last_tension_scan = wait_start;
         while (m_is_running && m_is_active && std::chrono::steady_clock::now() - wait_start < std::chrono::seconds(12)) {
             std::vector<std::uint8_t> frame; int width = 0, height = 0;
             if (capture_window_rect(window, frame, width, height)) {
                 double distance = 0; bool inside = false; const int stride = ((width * 3 + 3) / 4) * 4;
-                if (parse_bgr(frame.data(), width, height, stride, distance, inside) && inside) { tap_key(SCAN_SPACE, 40); hooked = true; break; }
+                if (parse_bgr(frame.data(), width, height, stride, distance, inside) && inside) {
+                    const auto now = std::chrono::steady_clock::now();
+                    if (now - last_tension_scan >= std::chrono::milliseconds(45)) {
+                        std::vector<std::uint8_t> hud; int hud_width = 0, hud_height = 0;
+                        last_tension_scan = now;
+                        const int hud_stride = ((window.w * 3 + 3) / 4) * 4;
+                        if (capture_game_window(window, hud, hud_width, hud_height) &&
+                            tension_is_full_and_jerking(hud, hud_width, hud_height, hud_stride, tension_state)) {
+                            tap_key(SCAN_SPACE, 40); hooked = true; break;
+                        }
+                    }
+                }
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }

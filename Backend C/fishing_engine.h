@@ -50,6 +50,7 @@ private:
     void tap_key(WORD scancode, int duration_ms = 40) const;
     GameWindowInfo find_game_window() const;
     bool capture_window_rect(const GameWindowInfo& win, std::vector<std::uint8_t>& output, int& width, int& height) const;
+    bool capture_game_window(const GameWindowInfo& win, std::vector<std::uint8_t>& output, int& width, int& height) const;
     void main_loop();
 };
 
