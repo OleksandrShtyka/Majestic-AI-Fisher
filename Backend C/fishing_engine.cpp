@@ -251,6 +251,14 @@ void FishingEngine::main_loop() {
         if (!m_is_active) { std::this_thread::sleep_for(std::chrono::milliseconds(50)); continue; }
         const auto window = find_game_window();
         if (!window.found) { std::this_thread::sleep_for(std::chrono::seconds(1)); continue; }
+
+        // In Majestic the fishing interaction itself is started with E.  The
+        // casting bar only appears after this key, so it must be sent before
+        // waiting for the green launch zone / pressing Space.
+        tap_key(SCAN_E, 50);
+        std::this_thread::sleep_for(std::chrono::milliseconds(450));
+        if (!m_is_running || !m_is_active) continue;
+
         // Phase 1: cast only when the white marker reaches the green launch
         // zone on the long horizontal casting bar.
         const auto cast_start = std::chrono::steady_clock::now();
