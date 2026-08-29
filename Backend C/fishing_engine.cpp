@@ -62,8 +62,10 @@ struct TensionState {
     int confirmation_frames = 0;
 };
 
-bool tension_is_full_and_jerking(const std::vector<std::uint8_t>& frame, int width, int height, int stride, TensionState& state) {
-    if (frame.empty() || width < 50 || height < 50) return false;
+enum class TensionDecision { NotVisible, WaitingForJerk, Confirmed };
+
+TensionDecision tension_is_full_and_jerking(const std::vector<std::uint8_t>& frame, int width, int height, int stride, TensionState& state) {
+    if (frame.empty() || width < 50 || height < 50) return TensionDecision::NotVisible;
     int best_x = 0, best_y = 0, best_width = 0;
     // The bar is horizontal. Search red runs, ignoring tiny red HUD elements.
     for (int y = 0; y < height; y += 2) {
@@ -81,7 +83,7 @@ bool tension_is_full_and_jerking(const std::vector<std::uint8_t>& frame, int wid
             }
         }
     }
-    if (best_width == 0) { state.confirmation_frames = 0; return false; }
+    if (best_width == 0) { state.confirmation_frames = 0; return TensionDecision::NotVisible; }
 
     // A full bar in the supplied reference fills almost the entire 100px track.
     // At normal resolutions its visible red run is at least 65 pixels.
@@ -109,7 +111,7 @@ bool tension_is_full_and_jerking(const std::vector<std::uint8_t>& frame, int wid
     // Require repeated confirmation: protects against red notifications or one-frame effects.
     if (full && movement >= 0.025f) ++state.confirmation_frames;
     else state.confirmation_frames = 0;
-    return state.confirmation_frames >= 2;
+    return state.confirmation_frames >= 2 ? TensionDecision::Confirmed : TensionDecision::WaitingForJerk;
 }
 
 void send_scancode(WORD scancode, DWORD flags) {
@@ -247,8 +249,14 @@ void FishingEngine::main_loop() {
                         std::vector<std::uint8_t> hud; int hud_width = 0, hud_height = 0;
                         last_tension_scan = now;
                         const int hud_stride = ((window.w * 3 + 3) / 4) * 4;
-                        if (capture_game_window(window, hud, hud_width, hud_height) &&
-                            tension_is_full_and_jerking(hud, hud_width, hud_height, hud_stride, tension_state)) {
+                        if (capture_game_window(window, hud, hud_width, hud_height)) {
+                            const auto tension = tension_is_full_and_jerking(hud, hud_width, hud_height, hud_stride, tension_state);
+                            // Do not disable legacy fishing when the optional
+                            // tension widget is not rendered in this UI layout.
+                            if (tension == TensionDecision::Confirmed || tension == TensionDecision::NotVisible) {
+                                tap_key(SCAN_SPACE, 40); hooked = true; break;
+                            }
+                        } else {
                             tap_key(SCAN_SPACE, 40); hooked = true; break;
                         }
                     }
