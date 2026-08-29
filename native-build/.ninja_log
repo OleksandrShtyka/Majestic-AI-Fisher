@@ -1,0 +1,26 @@
+# ninja log v7
+138	2707	8097136384385205	CMakeFiles/MajesticAIFisher.dir/src/dqn_agent.cpp.obj	de18a6f9cc42821
+54	3894	8097137138683414	Backend C/CMakeFiles/fishing_native.dir/fishing_engine.cpp.obj	7c5111cec7445940
+3896	4559	8097137181808008	fishing_native.dll	b7298060ba25986d
+3896	4559	8097137181808008	Backend C/libfishing_native.dll.a	b7298060ba25986d
+73	8368	8097149844095139	CMakeFiles/MajesticAIFisher.dir/src/native_app.cpp.obj	ce63f0be854c236c
+27	508	8097152232875229	build.ninja	8b92e5a74b444d4e
+27	508	8097152232673882	C:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/native-build/cmake_install.cmake	8b92e5a74b444d4e
+27	508	8097152232719735	C:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/native-build/Backend C/cmake_install.cmake	8b92e5a74b444d4e
+8371	10148	8097149927033892	MajesticAIFisher.exe	f534b2aa5fd7089a
+64	4957	8097149504645122	CMakeFiles/MajesticAIFisher.dir/src/app_services.cpp.obj	715c4f24f9ff8926
+45	727	8097152232875229	build.ninja	8b92e5a74b444d4e
+45	727	8097152232875229	C:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/native-build/cmake_install.cmake	8b92e5a74b444d4e
+45	727	8097152232875229	C:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/native-build/Backend C/cmake_install.cmake	8b92e5a74b444d4e
+93	4256	8097152234974648	CMakeFiles/MajesticAIFisher.dir/src/dqn_agent.cpp.obj	fdb40cff68bd3d56
+255	5376	8097152236595059	CMakeFiles/MajesticAIFisher.dir/third_party/imgui/backends/imgui_impl_win32.cpp.obj	b19b537c60bc791d
+191	5805	8097152235928116	CMakeFiles/MajesticAIFisher.dir/third_party/imgui/imgui_tables.cpp.obj	9a31ac15c00eba3c
+297	6006	8097152237012507	CMakeFiles/MajesticAIFisher.dir/third_party/imgui/backends/imgui_impl_dx11.cpp.obj	e5bcbbd4ce25064a
+163	7214	8097152235674457	CMakeFiles/MajesticAIFisher.dir/third_party/imgui/imgui_draw.cpp.obj	4da151ae630ff275
+116	7287	8097152235200311	CMakeFiles/MajesticAIFisher.dir/src/app_services.cpp.obj	d81bd723604a7b87
+219	7559	8097152236214151	CMakeFiles/MajesticAIFisher.dir/third_party/imgui/imgui_widgets.cpp.obj	7a8867bade00c1fd
+137	9219	8097152235374357	CMakeFiles/MajesticAIFisher.dir/third_party/imgui/imgui.cpp.obj	5763f6aa089ce35d
+54	8266	8097152650872717	CMakeFiles/MajesticAIFisher.dir/src/native_app.cpp.obj	6ad79f79eda95c5d
+8267	10230	8097152733062059	MajesticAIFisher.exe	e39ad7fd40cab4f8
+19	8477	8097155418416646	CMakeFiles/MajesticAIFisher.dir/src/native_app.cpp.obj	6ad79f79eda95c5d
+71	1984	8097155899530516	MajesticAIFisher.exe	e39ad7fd40cab4f8

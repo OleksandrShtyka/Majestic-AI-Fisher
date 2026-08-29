@@ -1,0 +1,6 @@
+C:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/native-build/CMakeFiles/MajesticAIFisher.dir
+C:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/native-build/CMakeFiles/edit_cache.dir
+C:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/native-build/CMakeFiles/rebuild_cache.dir
+C:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/native-build/Backend C/CMakeFiles/fishing_native.dir
+C:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/native-build/Backend C/CMakeFiles/edit_cache.dir
+C:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/native-build/Backend C/CMakeFiles/rebuild_cache.dir

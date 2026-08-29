@@ -14,7 +14,6 @@ __pycache__/
 *.a
 /Backend C/build/
 /cmake-build-*/
-/native-build/
 
 # Distribution / packaging
 .Python
@@ -186,3 +185,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Version the ready-to-run native Windows build requested for releases.
+!/native-build/
+!/native-build/**

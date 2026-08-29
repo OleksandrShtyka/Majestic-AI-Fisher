@@ -1,0 +1,8 @@
+{
+	"InstallScripts" : 
+	[
+		"C:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/native-build/cmake_install.cmake",
+		"C:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/native-build/Backend C/cmake_install.cmake"
+	],
+	"Parallel" : false
+}
