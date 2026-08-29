@@ -206,7 +206,7 @@ const char* FishingEngine::phase_name() const {
     case FishingPhase::FirstE: return "sending first E";
     case FishingPhase::WaitingSecondE: return "waiting 3.5 seconds";
     case FishingPhase::SecondE: return "sending second E";
-    case FishingPhase::Casting: return "sending Space (cast)";
+    case FishingPhase::Casting: return "waiting 2 seconds before cast";
     case FishingPhase::WaitingHook: return "waiting 43.8 seconds";
     case FishingPhase::Hooking: return "sending Space (hook)";
     case FishingPhase::Reeling: return "reeling A/D";
@@ -350,8 +350,9 @@ void FishingEngine::main_loop() {
         if (!m_is_running || !m_is_active) continue;
         m_phase = FishingPhase::SecondE;
         tap_key(SCAN_E, 110);
-        if (!m_is_running || !m_is_active) continue;
         m_phase = FishingPhase::Casting;
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+        if (!m_is_running || !m_is_active) continue;
         tap_key(SCAN_SPACE, 50);
 
         // Hook exactly 45 seconds after the cast confirmation.
