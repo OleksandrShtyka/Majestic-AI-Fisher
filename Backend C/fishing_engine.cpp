@@ -72,6 +72,7 @@ bool is_tension_red(const std::uint8_t* pixel) {
 struct TensionState {
     bool white_seen = false;
     int red_frames = 0;
+    int last_red_width = 0;
     int anchor_x = 0;
     int anchor_y = 0;
     int anchor_width = 0;
@@ -166,6 +167,7 @@ TensionDecision tension_is_full_and_jerking(const std::vector<std::uint8_t>& fra
     // The red bite line occupies nearly the full width of the widget in the
     // supplied screenshots; reject small red glyphs and notifications.
     const int minimum_red_width = std::max(60, int(width * 0.055));
+    state.last_red_width = red_bar.width;
     constexpr int kMinimumWhiteWidth = 18;
     // The inactive bar can be nearly black, with only a tiny moving white
     // marker. Treat the absence of a long red segment as the armed state.
@@ -265,9 +267,9 @@ const char* FishingEngine::phase_name() const {
     case FishingPhase::SearchingGame: return "searching for game";
     case FishingPhase::FocusingGame: return "focusing game";
     case FishingPhase::FirstE: return "sending first E";
-    case FishingPhase::WaitingSecondE: return "waiting 2 seconds";
+    case FishingPhase::WaitingSecondE: return "waiting 10 seconds";
     case FishingPhase::SecondE: return "sending second E";
-    case FishingPhase::Casting: return "waiting 2 seconds before cast";
+    case FishingPhase::Casting: return "waiting 10 seconds before cast";
     case FishingPhase::WaitingHook: return "watching tension indicator";
     case FishingPhase::Hooking: return "sending Space (hook)";
     case FishingPhase::Reeling: return "reeling A/D";
@@ -377,6 +379,7 @@ void FishingEngine::start_thread() {
     if (m_is_running.exchange(true)) return;
     m_is_active = false; m_game_found = false; m_game_focused = false; m_phase = FishingPhase::Stopped;
     m_input_attempts = 0; m_input_successes = 0;
+    m_capture_frames = 0; m_capture_failures = 0; m_tension_red_width = 0;
     m_worker_thread = std::thread(&FishingEngine::main_loop, this);
 }
 void FishingEngine::stop() {
@@ -386,10 +389,22 @@ void FishingEngine::stop() {
 
 void FishingEngine::main_loop() {
     bool last_hotkey = false;
-    while (m_is_running) {
+    const auto poll_hotkey = [&]() {
         const bool hotkey = (GetAsyncKeyState(VK_F5) & 0x8000) != 0;
         if (hotkey && !last_hotkey) m_is_active = !m_is_active.load();
         last_hotkey = hotkey;
+    };
+    const auto wait_while_active = [&](std::chrono::milliseconds duration) {
+        const auto deadline = std::chrono::steady_clock::now() + duration;
+        while (m_is_running && m_is_active && std::chrono::steady_clock::now() < deadline) {
+            poll_hotkey();
+            if (!m_is_active) return false;
+            std::this_thread::sleep_for(std::chrono::milliseconds(25));
+        }
+        return m_is_running && m_is_active;
+    };
+    while (m_is_running) {
+        poll_hotkey();
         if (!m_is_active) { m_phase = FishingPhase::Stopped; std::this_thread::sleep_for(std::chrono::milliseconds(50)); continue; }
         m_phase = FishingPhase::SearchingGame;
         const auto window = find_game_window();
@@ -411,13 +426,11 @@ void FishingEngine::main_loop() {
         // change after the first interaction: that was preventing the second
         // E from ever being sent in alt:V.
         m_phase = FishingPhase::WaitingSecondE;
-        std::this_thread::sleep_for(std::chrono::seconds(2));
-        if (!m_is_running || !m_is_active) continue;
+        if (!wait_while_active(std::chrono::seconds(10))) continue;
         m_phase = FishingPhase::SecondE;
         tap_key(SCAN_E, 45);
         m_phase = FishingPhase::Casting;
-        std::this_thread::sleep_for(std::chrono::seconds(2));
-        if (!m_is_running || !m_is_active) continue;
+        if (!wait_while_active(std::chrono::seconds(10))) continue;
         tap_key(SCAN_SPACE, 50);
 
         // The bite interval is random. Watch the tension widget instead of
@@ -428,15 +441,20 @@ void FishingEngine::main_loop() {
         const auto deadline = std::chrono::steady_clock::now() + hook_timeout;
         bool hooked = false;
         while (m_is_running && m_is_active && std::chrono::steady_clock::now() < deadline) {
+            poll_hotkey();
+            if (!m_is_active) break;
             std::vector<std::uint8_t> frame;
             int width = 0, height = 0;
             if (capture_game_window(window, frame, width, height)) {
+                ++m_capture_frames;
                 const int stride = ((width * 3 + 3) / 4) * 4;
-                if (tension_is_full_and_jerking(frame, width, height, stride, tension) == TensionDecision::Confirmed) {
+                const auto decision = tension_is_full_and_jerking(frame, width, height, stride, tension);
+                m_tension_red_width = tension.last_red_width;
+                if (decision == TensionDecision::Confirmed) {
                     hooked = true;
                     break;
                 }
-            }
+            } else ++m_capture_failures;
             std::this_thread::sleep_for(std::chrono::milliseconds(30));
         }
         if (hooked) { m_phase = FishingPhase::Hooking; tap_key(SCAN_SPACE, 40); }
@@ -449,6 +467,8 @@ void FishingEngine::main_loop() {
         const auto reel_deadline = std::chrono::steady_clock::now() + std::chrono::seconds(65);
         while (hooked && m_is_running && m_is_active && corrections < 600 && reel.missing_frames < 20 &&
                std::chrono::steady_clock::now() < reel_deadline) {
+            poll_hotkey();
+            if (!m_is_active) break;
             std::vector<std::uint8_t> frame;
             int width = 0, height = 0;
             int movement = 0;

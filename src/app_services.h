@@ -12,6 +12,7 @@ public:
     explicit AccountService(std::filesystem::path directory);
     bool register_user(const std::wstring& username, const std::wstring& password, std::wstring& message);
     bool login(const std::wstring& username, const std::wstring& password, std::wstring& message) const;
+    void sync_remote(const std::wstring& username, bool developer, bool active);
     bool activate_promo(const std::wstring& username, const std::wstring& promo, std::wstring& message);
     bool is_developer(const std::wstring& username) const;
     bool subscription_active(const std::wstring& username) const;

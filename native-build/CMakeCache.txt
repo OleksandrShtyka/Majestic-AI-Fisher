@@ -219,6 +219,9 @@ CMAKE_TAPI:FILEPATH=CMAKE_TAPI-NOTFOUND
 // Studio IDE projects all commands are done without /nologo.
 CMAKE_VERBOSE_MAKEFILE:BOOL=FALSE
 
+//Public website URL used for account authentication
+MAJESTIC_SITE_URL:STRING=https://my-site-swart-rho-22.vercel.app
+
 //Value Computed by CMake
 MajesticAIFisher_BINARY_DIR:STATIC=C:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/native-build
 

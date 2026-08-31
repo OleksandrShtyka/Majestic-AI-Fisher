@@ -69,6 +69,13 @@ bool AccountService::login(const std::wstring& raw_username, const std::wstring&
     if (!it->developer && it->expires < now_seconds()) { message = L"Срок подписки истёк."; return false; }
     message = L"Авторизация успешна."; return true;
 }
+void AccountService::sync_remote(const std::wstring& username, bool developer, bool active) {
+    auto it = std::find_if(accounts_.begin(), accounts_.end(), [&](const Account& a) { return a.username == username; });
+    const long long expires = active ? now_seconds() + 86400 : 0;
+    if (it == accounts_.end()) accounts_.push_back({username, L"", expires, developer});
+    else { it->expires = expires; it->developer = developer; }
+    save();
+}
 bool AccountService::activate_promo(const std::wstring& username, const std::wstring& promo, std::wstring& message) {
     auto it = std::find_if(accounts_.begin(), accounts_.end(), [&](const Account& a) { return a.username == username; });
     if (it == accounts_.end()) { message = L"Пользователь не найден."; return false; }

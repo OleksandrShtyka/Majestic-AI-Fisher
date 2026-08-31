@@ -45,7 +45,7 @@ cmake_ninja_workdir = C$:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/native
 build cmake_object_order_depends_target_MajesticAIFisher: phony || cmake_object_order_depends_target_fishing_native
 
 build CMakeFiles/MajesticAIFisher.dir/src/native_app.cpp.obj: CXX_COMPILER__MajesticAIFisher_unscanned_ C$:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/src/native_app.cpp || cmake_object_order_depends_target_MajesticAIFisher
-  DEFINES = -DNOMINMAX -DUNICODE -DWIN32_LEAN_AND_MEAN -D_UNICODE
+  DEFINES = -DMAJESTIC_SITE_URL=\"https://my-site-swart-rho-22.vercel.app\" -DNOMINMAX -DUNICODE -DWIN32_LEAN_AND_MEAN -D_UNICODE
   DEP_FILE = CMakeFiles\MajesticAIFisher.dir\src\native_app.cpp.obj.d
   INCLUDES = -IC:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/third_party/imgui -IC:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/third_party/imgui/backends
   OBJECT_DIR = CMakeFiles\MajesticAIFisher.dir
@@ -53,7 +53,7 @@ build CMakeFiles/MajesticAIFisher.dir/src/native_app.cpp.obj: CXX_COMPILER__Maje
   TARGET_SUPPORT_DIR = CMakeFiles\MajesticAIFisher.dir
 
 build CMakeFiles/MajesticAIFisher.dir/src/dqn_agent.cpp.obj: CXX_COMPILER__MajesticAIFisher_unscanned_ C$:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/src/dqn_agent.cpp || cmake_object_order_depends_target_MajesticAIFisher
-  DEFINES = -DNOMINMAX -DUNICODE -DWIN32_LEAN_AND_MEAN -D_UNICODE
+  DEFINES = -DMAJESTIC_SITE_URL=\"https://my-site-swart-rho-22.vercel.app\" -DNOMINMAX -DUNICODE -DWIN32_LEAN_AND_MEAN -D_UNICODE
   DEP_FILE = CMakeFiles\MajesticAIFisher.dir\src\dqn_agent.cpp.obj.d
   INCLUDES = -IC:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/third_party/imgui -IC:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/third_party/imgui/backends
   OBJECT_DIR = CMakeFiles\MajesticAIFisher.dir
@@ -61,15 +61,23 @@ build CMakeFiles/MajesticAIFisher.dir/src/dqn_agent.cpp.obj: CXX_COMPILER__Majes
   TARGET_SUPPORT_DIR = CMakeFiles\MajesticAIFisher.dir
 
 build CMakeFiles/MajesticAIFisher.dir/src/app_services.cpp.obj: CXX_COMPILER__MajesticAIFisher_unscanned_ C$:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/src/app_services.cpp || cmake_object_order_depends_target_MajesticAIFisher
-  DEFINES = -DNOMINMAX -DUNICODE -DWIN32_LEAN_AND_MEAN -D_UNICODE
+  DEFINES = -DMAJESTIC_SITE_URL=\"https://my-site-swart-rho-22.vercel.app\" -DNOMINMAX -DUNICODE -DWIN32_LEAN_AND_MEAN -D_UNICODE
   DEP_FILE = CMakeFiles\MajesticAIFisher.dir\src\app_services.cpp.obj.d
   INCLUDES = -IC:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/third_party/imgui -IC:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/third_party/imgui/backends
   OBJECT_DIR = CMakeFiles\MajesticAIFisher.dir
   OBJECT_FILE_DIR = CMakeFiles\MajesticAIFisher.dir\src
   TARGET_SUPPORT_DIR = CMakeFiles\MajesticAIFisher.dir
 
+build CMakeFiles/MajesticAIFisher.dir/src/remote_auth.cpp.obj: CXX_COMPILER__MajesticAIFisher_unscanned_ C$:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/src/remote_auth.cpp || cmake_object_order_depends_target_MajesticAIFisher
+  DEFINES = -DMAJESTIC_SITE_URL=\"https://my-site-swart-rho-22.vercel.app\" -DNOMINMAX -DUNICODE -DWIN32_LEAN_AND_MEAN -D_UNICODE
+  DEP_FILE = CMakeFiles\MajesticAIFisher.dir\src\remote_auth.cpp.obj.d
+  INCLUDES = -IC:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/third_party/imgui -IC:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/third_party/imgui/backends
+  OBJECT_DIR = CMakeFiles\MajesticAIFisher.dir
+  OBJECT_FILE_DIR = CMakeFiles\MajesticAIFisher.dir\src
+  TARGET_SUPPORT_DIR = CMakeFiles\MajesticAIFisher.dir
+
 build CMakeFiles/MajesticAIFisher.dir/third_party/imgui/imgui.cpp.obj: CXX_COMPILER__MajesticAIFisher_unscanned_ C$:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/third_party/imgui/imgui.cpp || cmake_object_order_depends_target_MajesticAIFisher
-  DEFINES = -DNOMINMAX -DUNICODE -DWIN32_LEAN_AND_MEAN -D_UNICODE
+  DEFINES = -DMAJESTIC_SITE_URL=\"https://my-site-swart-rho-22.vercel.app\" -DNOMINMAX -DUNICODE -DWIN32_LEAN_AND_MEAN -D_UNICODE
   DEP_FILE = CMakeFiles\MajesticAIFisher.dir\third_party\imgui\imgui.cpp.obj.d
   INCLUDES = -IC:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/third_party/imgui -IC:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/third_party/imgui/backends
   OBJECT_DIR = CMakeFiles\MajesticAIFisher.dir
@@ -77,7 +85,7 @@ build CMakeFiles/MajesticAIFisher.dir/third_party/imgui/imgui.cpp.obj: CXX_COMPI
   TARGET_SUPPORT_DIR = CMakeFiles\MajesticAIFisher.dir
 
 build CMakeFiles/MajesticAIFisher.dir/third_party/imgui/imgui_draw.cpp.obj: CXX_COMPILER__MajesticAIFisher_unscanned_ C$:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/third_party/imgui/imgui_draw.cpp || cmake_object_order_depends_target_MajesticAIFisher
-  DEFINES = -DNOMINMAX -DUNICODE -DWIN32_LEAN_AND_MEAN -D_UNICODE
+  DEFINES = -DMAJESTIC_SITE_URL=\"https://my-site-swart-rho-22.vercel.app\" -DNOMINMAX -DUNICODE -DWIN32_LEAN_AND_MEAN -D_UNICODE
   DEP_FILE = CMakeFiles\MajesticAIFisher.dir\third_party\imgui\imgui_draw.cpp.obj.d
   INCLUDES = -IC:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/third_party/imgui -IC:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/third_party/imgui/backends
   OBJECT_DIR = CMakeFiles\MajesticAIFisher.dir
@@ -85,7 +93,7 @@ build CMakeFiles/MajesticAIFisher.dir/third_party/imgui/imgui_draw.cpp.obj: CXX_
   TARGET_SUPPORT_DIR = CMakeFiles\MajesticAIFisher.dir
 
 build CMakeFiles/MajesticAIFisher.dir/third_party/imgui/imgui_tables.cpp.obj: CXX_COMPILER__MajesticAIFisher_unscanned_ C$:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/third_party/imgui/imgui_tables.cpp || cmake_object_order_depends_target_MajesticAIFisher
-  DEFINES = -DNOMINMAX -DUNICODE -DWIN32_LEAN_AND_MEAN -D_UNICODE
+  DEFINES = -DMAJESTIC_SITE_URL=\"https://my-site-swart-rho-22.vercel.app\" -DNOMINMAX -DUNICODE -DWIN32_LEAN_AND_MEAN -D_UNICODE
   DEP_FILE = CMakeFiles\MajesticAIFisher.dir\third_party\imgui\imgui_tables.cpp.obj.d
   INCLUDES = -IC:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/third_party/imgui -IC:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/third_party/imgui/backends
   OBJECT_DIR = CMakeFiles\MajesticAIFisher.dir
@@ -93,7 +101,7 @@ build CMakeFiles/MajesticAIFisher.dir/third_party/imgui/imgui_tables.cpp.obj: CX
   TARGET_SUPPORT_DIR = CMakeFiles\MajesticAIFisher.dir
 
 build CMakeFiles/MajesticAIFisher.dir/third_party/imgui/imgui_widgets.cpp.obj: CXX_COMPILER__MajesticAIFisher_unscanned_ C$:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/third_party/imgui/imgui_widgets.cpp || cmake_object_order_depends_target_MajesticAIFisher
-  DEFINES = -DNOMINMAX -DUNICODE -DWIN32_LEAN_AND_MEAN -D_UNICODE
+  DEFINES = -DMAJESTIC_SITE_URL=\"https://my-site-swart-rho-22.vercel.app\" -DNOMINMAX -DUNICODE -DWIN32_LEAN_AND_MEAN -D_UNICODE
   DEP_FILE = CMakeFiles\MajesticAIFisher.dir\third_party\imgui\imgui_widgets.cpp.obj.d
   INCLUDES = -IC:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/third_party/imgui -IC:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/third_party/imgui/backends
   OBJECT_DIR = CMakeFiles\MajesticAIFisher.dir
@@ -101,7 +109,7 @@ build CMakeFiles/MajesticAIFisher.dir/third_party/imgui/imgui_widgets.cpp.obj: C
   TARGET_SUPPORT_DIR = CMakeFiles\MajesticAIFisher.dir
 
 build CMakeFiles/MajesticAIFisher.dir/third_party/imgui/backends/imgui_impl_win32.cpp.obj: CXX_COMPILER__MajesticAIFisher_unscanned_ C$:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/third_party/imgui/backends/imgui_impl_win32.cpp || cmake_object_order_depends_target_MajesticAIFisher
-  DEFINES = -DNOMINMAX -DUNICODE -DWIN32_LEAN_AND_MEAN -D_UNICODE
+  DEFINES = -DMAJESTIC_SITE_URL=\"https://my-site-swart-rho-22.vercel.app\" -DNOMINMAX -DUNICODE -DWIN32_LEAN_AND_MEAN -D_UNICODE
   DEP_FILE = CMakeFiles\MajesticAIFisher.dir\third_party\imgui\backends\imgui_impl_win32.cpp.obj.d
   INCLUDES = -IC:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/third_party/imgui -IC:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/third_party/imgui/backends
   OBJECT_DIR = CMakeFiles\MajesticAIFisher.dir
@@ -109,7 +117,7 @@ build CMakeFiles/MajesticAIFisher.dir/third_party/imgui/backends/imgui_impl_win3
   TARGET_SUPPORT_DIR = CMakeFiles\MajesticAIFisher.dir
 
 build CMakeFiles/MajesticAIFisher.dir/third_party/imgui/backends/imgui_impl_dx11.cpp.obj: CXX_COMPILER__MajesticAIFisher_unscanned_ C$:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/third_party/imgui/backends/imgui_impl_dx11.cpp || cmake_object_order_depends_target_MajesticAIFisher
-  DEFINES = -DNOMINMAX -DUNICODE -DWIN32_LEAN_AND_MEAN -D_UNICODE
+  DEFINES = -DMAJESTIC_SITE_URL=\"https://my-site-swart-rho-22.vercel.app\" -DNOMINMAX -DUNICODE -DWIN32_LEAN_AND_MEAN -D_UNICODE
   DEP_FILE = CMakeFiles\MajesticAIFisher.dir\third_party\imgui\backends\imgui_impl_dx11.cpp.obj.d
   INCLUDES = -IC:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/third_party/imgui -IC:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/third_party/imgui/backends
   OBJECT_DIR = CMakeFiles\MajesticAIFisher.dir
@@ -124,9 +132,9 @@ build CMakeFiles/MajesticAIFisher.dir/third_party/imgui/backends/imgui_impl_dx11
 #############################################
 # Link the executable MajesticAIFisher.exe
 
-build MajesticAIFisher.exe: CXX_EXECUTABLE_LINKER__MajesticAIFisher_ CMakeFiles/MajesticAIFisher.dir/src/native_app.cpp.obj CMakeFiles/MajesticAIFisher.dir/src/dqn_agent.cpp.obj CMakeFiles/MajesticAIFisher.dir/src/app_services.cpp.obj CMakeFiles/MajesticAIFisher.dir/third_party/imgui/imgui.cpp.obj CMakeFiles/MajesticAIFisher.dir/third_party/imgui/imgui_draw.cpp.obj CMakeFiles/MajesticAIFisher.dir/third_party/imgui/imgui_tables.cpp.obj CMakeFiles/MajesticAIFisher.dir/third_party/imgui/imgui_widgets.cpp.obj CMakeFiles/MajesticAIFisher.dir/third_party/imgui/backends/imgui_impl_win32.cpp.obj CMakeFiles/MajesticAIFisher.dir/third_party/imgui/backends/imgui_impl_dx11.cpp.obj | Backend$ C/libfishing_native.dll.a || fishing_native.dll
+build MajesticAIFisher.exe: CXX_EXECUTABLE_LINKER__MajesticAIFisher_ CMakeFiles/MajesticAIFisher.dir/src/native_app.cpp.obj CMakeFiles/MajesticAIFisher.dir/src/dqn_agent.cpp.obj CMakeFiles/MajesticAIFisher.dir/src/app_services.cpp.obj CMakeFiles/MajesticAIFisher.dir/src/remote_auth.cpp.obj CMakeFiles/MajesticAIFisher.dir/third_party/imgui/imgui.cpp.obj CMakeFiles/MajesticAIFisher.dir/third_party/imgui/imgui_draw.cpp.obj CMakeFiles/MajesticAIFisher.dir/third_party/imgui/imgui_tables.cpp.obj CMakeFiles/MajesticAIFisher.dir/third_party/imgui/imgui_widgets.cpp.obj CMakeFiles/MajesticAIFisher.dir/third_party/imgui/backends/imgui_impl_win32.cpp.obj CMakeFiles/MajesticAIFisher.dir/third_party/imgui/backends/imgui_impl_dx11.cpp.obj | Backend$ C/libfishing_native.dll.a || fishing_native.dll
   LINK_FLAGS = -mwindows -static-libgcc -static-libstdc++
-  LINK_LIBRARIES = "Backend C/libfishing_native.dll.a"  -lcomctl32  -ldwmapi  -lbcrypt  -lgdiplus  -ld3d11  -ldxgi  -ld3dcompiler  -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
+  LINK_LIBRARIES = "Backend C/libfishing_native.dll.a"  -lcomctl32  -ldwmapi  -lbcrypt  -lgdiplus  -ld3d11  -ldxgi  -ld3dcompiler  -lwinhttp  -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
   OBJECT_DIR = CMakeFiles\MajesticAIFisher.dir
   POST_BUILD = C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Users\sstik\OneDrive\Desktop\Majestic-AI-Fisher\native-build && "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different "C:/Program Files/JetBrains/CLion 2026.2.1/bin/mingw/bin/libgcc_s_seh-1.dll" C:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/native-build && cd /D C:\Users\sstik\OneDrive\Desktop\Majestic-AI-Fisher\native-build && "C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different "C:/Program Files/JetBrains/CLion 2026.2.1/bin/mingw/bin/libwinpthread-1.dll" C:/Users/sstik/OneDrive/Desktop/Majestic-AI-Fisher/native-build"
   PRE_LINK = cd .

@@ -43,6 +43,9 @@ public:
     bool game_focused() const { return m_game_focused.load(); }
     unsigned long input_attempts() const { return m_input_attempts.load(); }
     unsigned long input_successes() const { return m_input_successes.load(); }
+    unsigned long capture_frames() const { return m_capture_frames.load(); }
+    unsigned long capture_failures() const { return m_capture_failures.load(); }
+    int tension_red_width() const { return m_tension_red_width.load(); }
     const char* phase_name() const;
 
     double scale_x = 0.32;
@@ -58,6 +61,9 @@ private:
     std::atomic<FishingPhase> m_phase{FishingPhase::Stopped};
     std::atomic<unsigned long> m_input_attempts{0};
     std::atomic<unsigned long> m_input_successes{0};
+    std::atomic<unsigned long> m_capture_frames{0};
+    std::atomic<unsigned long> m_capture_failures{0};
+    std::atomic<int> m_tension_red_width{0};
     std::thread m_worker_thread;
 
     void tap_key(WORD scancode, int duration_ms = 40);
